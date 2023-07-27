@@ -63,38 +63,25 @@ AIC(valid.gam)
 
 ## Linear model looks to be a better fit.
 
-###############################################################################
+####################### Phylogeny #############################
 
 
-
-
-#################################################################
-################# Phylogeny + Bayesian stats ####################
-
-
-
-## Create a phylogeny
 #load species list
-
+read_csv("species.csv")
 
 ## Based on Dan Nobles code 2016 ####
-## Phylogeny
 ## Access taxon relationships from Open Tree of Life
-# needed for phylogenetic control
 animal<-as.character(data$Animal)
 
 # Match species in dataset
 tree2 = tnrs_match_names(as.character(unique(speciesList2$Species)), context_name = "Animals")
 
 ## Getting HTTP failure error with the tol_induced_subtree step, so following ROTL documentation run the following:
-
 in_tree <- is_in_tree(ott_id(tree2))
 in_tree
 
-
 #Create a tree based on itt id's found on the open tree of life
 tl2 <- tol_induced_subtree(ott_id(tree2)[in_tree]) 
-
 
 #Remove ott labels on end to make sure to matches species in dataset
 tl2$tip.label = strip_ott_ids(tl2$tip.label, remove_underscores=FALSE)
@@ -118,7 +105,6 @@ print(R_phylo)
 unique(data$Animal)
 rownames(R_phylo) %in% unique(data$Animal)
 rownames(R_phylo)[!rownames(R_phylo) %in% unique(data$Animal)]
-
 
 data$phylogeny <- data$Animal
 
@@ -147,6 +133,14 @@ summary(pglmm2)
 
 
 ####### Use metafor to conduct the analysis, this way the datapoints will be weighted ###
+
+
+
+
+
+
+
+
 
 
 

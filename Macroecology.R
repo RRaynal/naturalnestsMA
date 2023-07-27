@@ -22,7 +22,7 @@ library(gamm4)
 
 
 #load data
-data <- read_csv("~/Dropbox/PHD/Natural nest temps/Macro Ecology Analysis/Macro Ecology Data.csv")
+data <- read_csv("Macro Ecology Data.csv")
 data$Long <- as.numeric(data$Long)
 data$Lat <- as.numeric(data$Lat)
 data$Mean <- as.numeric(data$Mean)
@@ -37,7 +37,7 @@ valid <- lm(Mean ~ test, data = data)
 summary(valid)
 # r=0.9863
 # slope=1.06
- 
+
 
 ## Look at the difference between using a GAM and a LMER model using all the data, not grouped 
 
@@ -65,91 +65,17 @@ AIC(valid.gam)
 
 ###############################################################################
 
-##########################################################################################
-
-## Run some models without the phylogeny, including species.
 
 
-## Major taxonomic group
-
-major.mod <- lmer(Mean ~ abs(Lat) + Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(major.mod)
-anova(major.mod)
-
-emm <- emmeans(major.mod, ~ Major.group)
-
-# Perform Tukey's HSD post hoc test
-contrast(emm, "pairwise", adjust = "tukey")
-
-
-## Interaction?
-major.int <- lmer(Mean ~ abs(Lat)*Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(major.int)
-anova(major.int)
-
-plot(major.int, which = 2)
-
-## interaction is significant
-
-### Some more models with the different groupings of the taxa
-
-## Reptiles only
-mod.reptile <- lmer(Mean ~ abs(Lat) + Group2 + (1|study_ID) + (1|Species), data = reptiles, REML = TRUE, na.action = na.exclude)
-summary(mod.reptile)
-anova(mod.reptile)
-
-# Compute EMMs
-emmrep <- emmeans(mod.reptile, "Group2")
-# Perform Tukey's HSD post hoc test
-contrast(emmrep, "pairwise", adjust = "tukey")
-
-## Same model but interaction between group*lat
-int.reptile <- lmer(Mean ~ abs(Lat)*Group2 + (1|study_ID) + (1|Species), data = reptiles, REML = TRUE, na.action = na.exclude)
-summary(int.reptile)
-anova(int.reptile)
-
-# No interaction
-
-### Grouped by laying eggs in the water or on land 
-mod.water<- lmer(Mean ~ abs(Lat)*Water + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(mod.water)
-anova(mod.water)
-
-## latitude and interaction is significant
-
-# Compute EMMs
-emmwater <- emmeans(mod.water, "Water")
-
-# Perform Tukey's HSD post hoc test
-contrast(emmwater, "pairwise", adjust = "tukey")
-
-### No significant difference between land and water
-
-#################################################################
-## Try a pglmm
-
-library(phyr)
-library(ape)
-
-## I am getting an error from the Random section, it wants a valid covariance matrix
-## I feel like thats what I am providing but the model isnt happy, maybe ask Patrice
-## if we decide to keep the phylogeny
-
-pglmm <- phyr::pglmm(Mean ~ abs(Lat), 
-                     data = data, 
-                     random = ~1|phylogeny, ~1|animal,
-                     family = "gaussian")
-
-summary(pglmm)
 
 #################################################################
 ################# Phylogeny + Bayesian stats ####################
-#################################################################
+
 
 
 ## Create a phylogeny
 #load species list
-speciesList2 <- read_csv("~/Dropbox/PHD/Natural nest temps/Naturalnests/species.csv")
+
 
 ## Based on Dan Nobles code 2016 ####
 ## Phylogeny
@@ -196,100 +122,37 @@ rownames(R_phylo)[!rownames(R_phylo) %in% unique(data$Animal)]
 
 data$phylogeny <- data$Animal
 
-#######################################################################################
-## Patrice and I had a good go at trying to run frequentist models, 
-## but we kept running into problems with not being able to include random or fixed effects aswell as the phylogeny
-## we tried pglmm and almer.
+#################################################################
+## Try a PGLMM 
+
+library(phyr)
+library(ape)
+
+data$study_ID <- as.character(data$study_ID)
+data$sp_ <- data$Animal
+data$Mean <- as.numeric(data$Mean)
+
+pglmm <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | study_ID)+ (1|Animal), 
+                     data = data, 
+                     cov_ranef = list(sp = tl2$tip.label),
+                     family = "gaussian")
+summary(pglmm)
 
 
-### SO! Run a Bayesian model
-
-prior <- list(R = list(V = 1, nu = 0.002),
-              G = list(G1 = list(V = 1, nu = 0.002,
-                                 alpha.mu = 0,
-                                 alpha.V = 1000), 
-                       G2 = list(V = 1, nu = 0.002,
-                                 alpha.mu = 0,
-                                 alpha.V = 1000), 
-                       G3 = list(V = 1, nu = 0.002,
-                                 alpha.mu = 0,
-                                 alpha.V = 1000)))
+pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID), 
+                      data = data, 
+                      cov_ranef = list(sp = tl2$tip.label),
+                      family = "gaussian")
+summary(pglmm2)
 
 
-data$tip.label <- data$Animal
-
-data2<- data[data$tip.label %in% tl2_brlen$tip.label, ]
-data2$Lat[is.na(data2$Lat)] <- mean(data2$Lat, na.rm = TRUE)
-
-Ainv<- inverseA(tl2_brlen)$Ainv
-
-data2<-as.data.frame(data2)
-mod<- MCMCglmm(Mean ~ abs(Lat),
-               random= ~study_ID+Species+tip.label, 
-               ginverse=list(tip.label = Ainv),
-               nitt=10000,
-               thin=50,
-               burnin=3000,
-               prior=prior,
-               data=data2)
-summary(mod)
-ggplot(data, aes(x=abs(Lat), y=Mean))+geom_point()+geom_smooth(method="lm")
-
-## Differences between taxa
-mod2<- MCMCglmm(Mean ~ abs(Lat)+Group,
-                random= ~study_ID+Species+tip.label, 
-                ginverse=list(tip.label = Ainv),
-                nitt=10000,
-                thin=50,
-                burnin=3000,
-                prior=prior,
-                data=data2)
-summary(mod2)
-
-### The model that makes the most sense for looking at mean temp differences b/w groups ####
-mod3<- MCMCglmm(Mean ~ abs(Lat)+Group-1,
-                random= ~study_ID+Species+tip.label, 
-                ginverse=list(tip.label = Ainv),
-                nitt=10000,
-                thin=50,
-                burnin=3000,
-                prior=prior,
-                data=data2)
-summary(mod3)
+####### Use metafor to conduct the analysis, this way the datapoints will be weighted ###
 
 
-## Add an interaction term
-mod4<- MCMCglmm(Mean ~ abs(Lat)*Group-1,
-                random= ~study_ID+Species+tip.label, 
-                ginverse=list(tip.label = Ainv),
-                nitt=10000,
-                thin=50,
-                burnin=3000,
-                prior=prior,
-                data=data2)
-summary(mod4) # might need to remove fish and amphibians because they have very low number of datapoints, which clearly overestimates the parameters
 
-lambda<-mod4$VCV[,"tip.label"]/rowSums(mod4$VCV)
-posterior.mode(lambda)
-HPDinterval(lambda)
 
-prior2 <- list(R = list(V = 1, nu = 0.002),
-               G = list(G1 = list(V = 1, nu = 0.002,
-                                  alpha.mu = 0,
-                                  alpha.V = 1000), 
-                        G2 = list(V = 1, nu = 0.002,
-                                  alpha.mu = 0,
-                                  alpha.V = 1000)))
-mod5<- MCMCglmm(Mean ~ abs(Lat)*Group-1,
-                random= ~study_ID+Species,
-                nitt=10000,
-                thin=50,
-                burnin=3000,
-                prior=prior2,
-                data=data2)
-summary(mod5) 
 
-#############################################################################
+############################ Standard deviation analysis #########################
 
 ## Now we have a few extra months, we will check out the standard deviation data
 # First see what the data looks like
@@ -382,3 +245,162 @@ anova(mod.waterSD)
 
 ## Latitude seems to be the most important determinant of among nest SD
 # Now lets make some graphics
+
+
+
+
+
+
+
+
+
+
+##############################################################################
+##################### Not using the below at the moment ######################
+
+## Linear models without phylogeny
+
+## Major taxonomic group
+
+major.mod <- lmer(Mean ~ abs(Lat) + Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
+summary(major.mod)
+anova(major.mod)
+
+emm <- emmeans(major.mod, ~ Major.group)
+
+# Perform Tukey's HSD post hoc test
+contrast(emm, "pairwise", adjust = "tukey")
+
+
+## Interaction?
+major.int <- lmer(Mean ~ abs(Lat)*Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
+summary(major.int)
+anova(major.int)
+
+plot(major.int, which = 2)
+
+## interaction is significant
+
+### Some more models with the different groupings of the taxa
+
+## Reptiles only
+mod.reptile <- lmer(Mean ~ abs(Lat) + Group2 + (1|study_ID) + (1|Species), data = reptiles, REML = TRUE, na.action = na.exclude)
+summary(mod.reptile)
+anova(mod.reptile)
+
+# Compute EMMs
+emmrep <- emmeans(mod.reptile, "Group2")
+# Perform Tukey's HSD post hoc test
+contrast(emmrep, "pairwise", adjust = "tukey")
+
+## Same model but interaction between group*lat
+int.reptile <- lmer(Mean ~ abs(Lat)*Group2 + (1|study_ID) + (1|Species), data = reptiles, REML = TRUE, na.action = na.exclude)
+summary(int.reptile)
+anova(int.reptile)
+
+# No interaction
+
+### Grouped by laying eggs in the water or on land 
+mod.water<- lmer(Mean ~ abs(Lat)*Water + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
+summary(mod.water)
+anova(mod.water)
+
+## latitude and interaction is significant
+
+# Compute EMMs
+emmwater <- emmeans(mod.water, "Water")
+
+# Perform Tukey's HSD post hoc test
+contrast(emmwater, "pairwise", adjust = "tukey")
+
+### No significant difference between land and water
+
+#############################################################################
+### Run a Bayesian model #####
+
+prior <- list(R = list(V = 1, nu = 0.002),
+              G = list(G1 = list(V = 1, nu = 0.002,
+                                 alpha.mu = 0,
+                                 alpha.V = 1000), 
+                       G2 = list(V = 1, nu = 0.002,
+                                 alpha.mu = 0,
+                                 alpha.V = 1000), 
+                       G3 = list(V = 1, nu = 0.002,
+                                 alpha.mu = 0,
+                                 alpha.V = 1000)))
+
+
+data$tip.label <- data$Animal
+
+data2<- data[data$tip.label %in% tl2_brlen$tip.label, ]
+data2$Lat[is.na(data2$Lat)] <- mean(data2$Lat, na.rm = TRUE)
+
+Ainv<- inverseA(tl2_brlen)$Ainv
+
+data2<-as.data.frame(data2)
+mod<- MCMCglmm(Mean ~ abs(Lat),
+               random= ~study_ID+Species+tip.label, 
+               ginverse=list(tip.label = Ainv),
+               nitt=10000,
+               thin=50,
+               burnin=3000,
+               prior=prior,
+               data=data2)
+summary(mod)
+ggplot(data, aes(x=abs(Lat), y=Mean))+geom_point()+geom_smooth(method="lm")
+
+## Differences between taxa
+mod2<- MCMCglmm(Mean ~ abs(Lat)+Group,
+                random= ~study_ID+Species+tip.label, 
+                ginverse=list(tip.label = Ainv),
+                nitt=10000,
+                thin=50,
+                burnin=3000,
+                prior=prior,
+                data=data2)
+summary(mod2)
+
+### The model that makes the most sense for looking at mean temp differences b/w groups ####
+mod3<- MCMCglmm(Mean ~ abs(Lat)+Group-1,
+                random= ~study_ID+Species+tip.label, 
+                ginverse=list(tip.label = Ainv),
+                nitt=10000,
+                thin=50,
+                burnin=3000,
+                prior=prior,
+                data=data2)
+summary(mod3)
+
+
+## Add an interaction term
+mod4<- MCMCglmm(Mean ~ abs(Lat)*Group-1,
+                random= ~study_ID+Species+tip.label, 
+                ginverse=list(tip.label = Ainv),
+                nitt=10000,
+                thin=50,
+                burnin=3000,
+                prior=prior,
+                data=data2)
+summary(mod4) # might need to remove fish and amphibians because they have very low number of datapoints, which clearly overestimates the parameters
+
+lambda<-mod4$VCV[,"tip.label"]/rowSums(mod4$VCV)
+posterior.mode(lambda)
+HPDinterval(lambda)
+
+prior2 <- list(R = list(V = 1, nu = 0.002),
+               G = list(G1 = list(V = 1, nu = 0.002,
+                                  alpha.mu = 0,
+                                  alpha.V = 1000), 
+                        G2 = list(V = 1, nu = 0.002,
+                                  alpha.mu = 0,
+                                  alpha.V = 1000)))
+mod5<- MCMCglmm(Mean ~ abs(Lat)*Group-1,
+                random= ~study_ID+Species,
+                nitt=10000,
+                thin=50,
+                burnin=3000,
+                prior=prior2,
+                data=data2)
+summary(mod5) 
+
+#############################################################################

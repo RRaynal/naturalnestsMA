@@ -16,7 +16,7 @@ library(ggstream)
 
 
 #load data
-data <- read_csv("~/Dropbox/PHD/Natural nest temps/Macro Ecology Analysis/Macro Ecology Data.csv")
+data <- read_csv("Macro Ecology Data.csv")
 data$Long <- as.numeric(data$Long)
 data$Lat <- as.numeric(data$Lat)
 data$Mean <- as.numeric(data$Mean)
@@ -281,19 +281,27 @@ udata<- data %>% distinct(study_ID, .keep_all = TRUE)
 year_tbl <- udata %>% group_by(Group, year)
 by_group <- year_tbl %>% summarise(n = n())
 
-##Create a stream plot showing number of studies each year, grouped by major taxa
-ggplot(by_group, aes(x = year, y = n, fill = Group)) +
-  geom_stream (extra_span = 0.4, bw = 2, sorting = c( "onset"), type = "ridge") +
+by_group$Group <- factor(by_group$Group, levels =c("6. Turtle", "5. Other Reptile", "1. Crocodilian", "4. Invertebrate", "2. Amphibian", "3. Fish"))
+
+# Rename the levels of the 'Group' factor to remove the numbers at the start
+by_group$Group <- recode(by_group$Group,
+                         "6. Turtle" = "Turtle",
+                         "1. Crocodilian" = "Crocodilian",
+                         "2. Amphibian" = "Amphibian",
+                         "3. Fish" = "Fish",
+                         "4. Invertebrate" = "Invertebrate",
+                         "5. Other Reptile" = "Other Reptile")
+
+
+# Create the ggplot with geom_stream and set the stacking order using the group aesthetic
+ggplot(by_group, aes(x = year, y = n, fill = Group, group = Group)) +
+  geom_stream(extra_span = 0.4, bw = 2, type = "ridge") +
+  labs(y = "Number of studies") +
+  labs(x = "Publication year") +
   theme_bw()
 
-# Reorder the levels of the 'group' factor, pushing the desired factor to the back
-by_group$Group <- factor(by_group$Group, levels = c("1. Crocodilian", "2. Amphibian", "3. Fish", "4. Invertebrate", "5. Other Reptile", "6. Turtle"))
+## ok its perfect.
 
-
-ggplot(by_group, aes(x = year, y = n, colour = Group, fill = Group)) +
-  geom_line(size = 1.5) +
-  geom_area(position = "identity", alpha = 0.9) +  # Set position to "identity" to avoid stacking
-  theme_bw()
 
 
 

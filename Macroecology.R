@@ -10,7 +10,6 @@ library(MCMCglmm)
 library(phytools)
 library(rotl)
 library(metafor)
-library(orchaRd)
 library(ape)
 library(lme4)
 library(lmerTest)
@@ -26,6 +25,7 @@ data <- read_csv("Macro Ecology Data.csv")
 data$Long <- as.numeric(data$Long)
 data$Lat <- as.numeric(data$Lat)
 data$Mean <- as.numeric(data$Mean)
+data$Major.group <- as.factor(data$Major.group)
 
 reptiles <- data %>% filter(Group2 %in% c("Sea Turtle", "Freshwater Turtle", "Crocodilian", "Lizard/snake"))
 
@@ -67,7 +67,7 @@ AIC(valid.gam)
 
 
 #load species list
-read_csv("species.csv")
+speciesList2<- read_csv("species.csv")
 
 ## Based on Dan Nobles code 2016 ####
 ## Access taxon relationships from Open Tree of Life
@@ -109,7 +109,7 @@ rownames(R_phylo)[!rownames(R_phylo) %in% unique(data$Animal)]
 data$phylogeny <- data$Animal
 
 #################################################################
-## Try a PGLMM 
+## Try a PGLMM - a linear mixed effect model that includes a phylogeny
 
 library(phyr)
 library(ape)
@@ -118,11 +118,20 @@ data$study_ID <- as.character(data$study_ID)
 data$sp_ <- data$Animal
 data$Mean <- as.numeric(data$Mean)
 
-pglmm <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | study_ID)+ (1|Animal), 
+# First run a model without any grouping.
+
+pglmm <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                      data = data, 
                      cov_ranef = list(sp = tl2$tip.label),
                      family = "gaussian")
 summary(pglmm)
+
+
+# The phylogeny is accounting for most of the variance, however absolute latitude is not significant
+
+
+# Change the reference level for Major.group
+data$Major.group <- relevel(data$Major.group, ref = "Reptile")
 
 
 pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID), 
@@ -132,18 +141,37 @@ pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID),
 summary(pglmm2)
 
 
-####### Use metafor to conduct the analysis, this way the datapoints will be weighted ###
+# The inclusion of the "Major.group" as a fixed effect in the second model has revealed significant 
+# interactions between abs(Lat) and the different levels of "Major.group," which were not evident in the first model
+# with only abs(Lat) as the fixed effect. The effect of abs(Lat) on Mean varies across different groups 
+
+# I want to get a p-value for the interaction on its own, so I will perform a 
+# maximum liklihood test
+
+## cant seem to use the anova function with a pglmm, tried lmertest and lmtest. 
 
 
+pglmm3 <- phyr::pglmm(Mean ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID), 
+                      data = data, 
+                      cov_ranef = list(sp = tl2$tip.label),
+                      family = "gaussian")
+summary(pglmm3)
 
 
+## The effect of absolute latitude on the mean is only significant between crocodiles and lizards/snakes
+## weird.
+## The phylogeny is absorbing a lot of the variance across all the models
+## species that share a closer evolutionary relationship are expected to have more
+## similar mean nest temperatures in relation to latitude, compared to species that
+## are more distantly related.
 
-
-
-
-
-
-
+pglmm4 <- phyr::pglmm(Mean ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID), 
+                      data = data, 
+                      cov_ranef = list(sp = tl2$tip.label),
+                      family = "gaussian")
+summary(pglmm4)
+# The interaction between latitude and temperatures between animals that lay their eggs in 
+# the water or on land is significant, nothing else is. Weird interpretation. 
 
 
 ############################ Standard deviation analysis #########################
@@ -189,51 +217,47 @@ AIC(validSD.gam)
 ## Using lmer or GAM doesnt seem to be different, linear models are much easier
 ## to interpret so will continue with linear unless everyone else thinks otherwise. 
 
-##lmer - is standard deviation different across latitude?
-SDmod <- lmer(Among_SD ~ abs(Lat) + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(SDmod)
+##pglmm - is standard deviation different across latitude?
 
+pglmmSD <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                     data = data, 
+                     cov_ranef = list(sp = tl2$tip.label),
+                     family = "gaussian")
+summary(pglmmSD)
 
-#Fixed effects:
-#             Estimate  Std. Error        df t value Pr(>|t|)    
-# (Intercept) 7.935e-01  1.935e-01 1.350e+02   4.101 7.08e-05 ***
-# abs(Lat)    2.018e-02  5.266e-03 2.273e+02   3.832 0.000165 ***
+# INTERESTING - phylogeny is not absorbing most of the variance, variance across the random effects
+# is quite low. In addition, there is a very significant relationship between standard deviation among nests
+# and absolute latitude. As latitude increases, SD increases.
 
 
 # Add in major taxanomic group to take a look if there are any patterns there
-SDmodgroup <- lmer(Among_SD ~ abs(Lat) + Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(SDmodgroup)
+pglmmSD2 <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                       data = data, 
+                       cov_ranef = list(sp = tl2$tip.label),
+                       family = "gaussian")
+summary(pglmmSD2)
+# However, when you add in the taxanomic groups, latitude is no longer a significant predictor, 
+# now nothing is significant.
 
-# Taxanomic group is not significant
-
-
-## Interaction?
-SDmodint <- lmer(Among_SD ~ abs(Lat)*Major.group + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(SDmodint)
-anova(SDmodint)
-
-## interaction is not significant
 
 ### Some more models with the different groupings of the taxa
-
 ## Reptiles only
-mod.reptileSD <- lmer(Among_SD ~ abs(Lat) + Group2 + (1|study_ID) + (1|Species), data = reptiles, REML = TRUE, na.action = na.exclude)
-summary(mod.reptileSD)
-anova(mod.reptileSD)
+pglmmSD3 <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID), 
+                      data = data, 
+                      cov_ranef = list(sp = tl2$tip.label),
+                      family = "gaussian")
+summary(pglmmSD3)
 
-## No difference between reptile groups
+## Same as above, no significance and no difference between reptile groups
 
-# Compute EMMs
-emmreptileSD <- emmeans(mod.reptileSD, "Group2")
-
-# Perform Tukey's HSD post hoc test
-contrast(emmreptileSD, "pairwise", adjust = "tukey")
 
 
 ### Grouped by laying eggs in the water or on land 
-mod.waterSD<- lmer(Among_SD ~ abs(Lat)*Water + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
-summary(mod.waterSD)
-anova(mod.waterSD)
+pglmmSD4 <- phyr::pglmm(Among_SD ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID), 
+                        data = data, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSD4)
 
 ## latitude is significant, interaction is close
 

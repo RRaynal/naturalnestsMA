@@ -163,10 +163,26 @@ data %>%
   labs(x="Latitude", y="Mean temperature", title= "") +
   theme_bw()
 
+# Set a threshold for the minimum number of observations in a group
+threshold <- 10
+
+filtered_data <- SeaTurts %>%
+  group_by(Name) %>%
+  filter(n() >= threshold) %>%
+  ungroup()
+
+ggplot(data = filtered_data, aes(x = abs(Lat), y = Mean, color = Name)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(x = "Latitude", y = "Mean temperature", title = "") +
+  ylim(25, 35)+
+  theme_bw()
+
+##hmm🤯
 
 ##scatterplot with trendlines
 Majorscat <- ggplot(data, aes(x=abs(Lat), y=Mean, col=Major.group))+
-  geom_point()+geom_smooth(method="lm")+ 
+  geom_point()+ +geom_smooth(method="lm")
   theme_bw() +
   scale_colour_brewer(palette="Dark2")+
   theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
@@ -224,8 +240,23 @@ ggarrange(repdensity, reptilescat,
           ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
 
 ## Invert only
-invertscat <- ggplot(Invert, aes(x=abs(Lat), y=Mean, col=Group3))+
-  geom_point()+geom_smooth(method="lm")+ 
+
+## 
+Invert <- data %>% filter(Group %in% c("4. Invertebrate")) 
+
+## Just want to take a look at the inverts compared to everything else
+invertscatall <- ggplot(data, aes(x = abs(Lat), y = Mean, col = Major.group)) +
+  geom_point() +
+  theme_bw() +
+  scale_colour_manual(values = c("Invertebrate" = "red", "Other Levels" = "blue")) +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
+
+invertscatall
+## Inverts have some of the highest nest temps, nothing above 35 for verts except a lone sea turtle.
+# Interesting.
+
+invertscat <- ggplot(Invert, aes(x=abs(Lat), y=Mean))+
+  geom_point()+ 
   theme_bw() +
   scale_colour_brewer(palette="Dark2")+
   theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
@@ -479,20 +510,113 @@ data %>%
   # however lizards/snakes increase SD with latitude. 
 
 
+## I want to make some graphics for my topic column
+  
+  topic_counts <- udata %>% group_by(topic) %>% 
+    summarise(total_count=n(),
+              .groups = 'drop')
 
 
+  subjectpie <- ggplot(topic_counts, aes(x="", y=total_count, fill=topic)) +
+    geom_bar(stat="identity", width=1, color="white") +
+    coord_polar("y", start=0) +
+    labs(title = "Study Topic - Ectotherms") +
+    guides(fill=guide_legend(title="Topics")) +
+    theme_void()
+  subjectpie
 
 
+  ## Look at sea turtles
+  sturtle_topic_counts <- udata %>%
+    filter(Group2 == "Sea Turtle") %>%
+    group_by(topic) %>%
+    summarise(topic_count = n(), .groups = 'drop')
 
+  subjectSTpie <- ggplot(sturtle_topic_counts, aes(x="", y=topic_count, fill=topic)) +
+    geom_bar(stat="identity", width=1, color="white") +
+    coord_polar("y", start=0) +
+    labs(title = "Sea Turtles") +
+    guides(fill=guide_legend(title="Topics")) +
+    theme_void()
+  subjectSTpie
+  
+  ## Look at invertebrates
+  invert_topic_counts <- udata %>%
+    filter(Major.group == "Invertebrate") %>%
+    group_by(topic) %>%
+    summarise(topic_count = n(), .groups = 'drop')
+  
+  subjectIpie <- ggplot(invert_topic_counts, aes(x="", y=topic_count, fill=topic)) +
+    geom_bar(stat="identity", width=1, color="white") +
+    coord_polar("y", start=0) +
+    labs(title = "Invertebrates") +
+    guides(fill=guide_legend(title="Topics")) +
+    theme_void()
+  subjectIpie
+  
+  ## Lizards, snakes and freshwater turtles
+  
+  # Combine specified levels of "group2" into "Other Reptile"
+  # Filter data for the specified levels of "group2"
+  filtered_dataOR <- udata %>%
+    filter(Group2 %in% c("Lizard/snake", "Freshwater Turtle"))
+  
+  # Get the group counts for each "topic"
+  group_countsOR <- filtered_dataOR %>%
+    group_by(Group2, topic) %>%
+    summarise(topic_count = n(), .groups = 'drop') %>%
+    group_by(topic) %>%
+    summarise(merged_topic_count = sum(topic_count), .groups = 'drop')
+  
+  
+  # Create a pie chart for the combined group
+  pie_chartOR <- ggplot(group_countsOR, aes(x = "", y = merged_topic_count, fill = topic)) +
+    geom_bar(stat = "identity", width = 1, color = "white") +
+    coord_polar("y", start = 0) +
+    labs(title = "Lizards, snakes and freshwater turtles") +
+    guides(fill = guide_legend(title = "Topics")) +
+    theme_void()
+  pie_chartOR
+  
+  ## Make a nice figure using ggarrange 
 
+  pie_chartOR <- pie_chartOR +
+    theme(legend.position = "none")
+  
+  subjectIpie <- subjectIpie +
+    theme(legend.position = "none")
+  
+  subjectSTpie <- subjectSTpie +
+    theme(legend.position = "none")
+  
+  # Arrange the pie charts using ggarrange with a common legend
+  arranged_pie_charts <- ggarrange(
+    subjectpie,
+    ggarrange(pie_chartOR, subjectIpie, subjectSTpie, ncol = 3),
+    ncol = 1,
+    heights = c(2, 1),   # Adjust the heights as needed
+    legend = "right"    # Place common legend at the bottom
+  )
+  arranged_pie_charts
 
-
-
-
-
-
-
-
+  
+  ## Fish pie
+  filtered_dataF <- udata %>%
+    filter(Group %in% c("3. Fish"))
+  
+  group_countsF <- filtered_dataF %>%
+    group_by(Group, topic) %>%
+    summarise(topic_count = n(), .groups = 'drop')
+  
+  pie_chartF <- ggplot(group_countsF, aes(x = "", y = topic_count, fill = topic)) +
+    geom_bar(stat = "identity", width = 1, color = "white") +
+    coord_polar("y", start = 0) +
+    labs(title = "Topic distribution for Fish") +
+    guides(fill = guide_legend(title = "Topics")) +
+    theme_void()
+  pie_chartF
+  
+  
 
 ### Not using any of the below at the moment ##
 ###############################################

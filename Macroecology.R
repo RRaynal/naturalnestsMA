@@ -39,6 +39,124 @@ summary(valid)
 # slope=1.06
 
 
+## Basic stats of data make up 
+
+# Calculate the counts for each level of Major.group
+group_counts <- count(data, Major.group)
+
+# Calculate the total number of rows in the data frame
+total_rows <- nrow(data)
+
+# Calculate the percentage of data within each level
+percentage_per_group <- (group_counts$n / total_rows) * 100
+
+# Add the percentages to the data frame
+group_counts$Percentage <- percentage_per_group
+
+# Print or display the result
+print(group_counts)
+
+## Within reptiles
+# Calculate the counts for each level of Reptile
+reptile_counts <- count(reptiles, Group2)
+
+# Calculate the total number of rows in the data frame
+total_rowsR <- nrow(reptiles)
+
+# Calculate the percentage of data within each level
+percentage_per_groupR <- (reptile_counts$n / total_rowsR) * 100
+
+# Add the percentages to the data frame
+reptile_counts$Percentage <- percentage_per_groupR
+
+# Print or display the result
+print(reptile_counts)
+
+#Within invertebrates
+# Calculate the counts for each level of Reptile
+invert_counts <- count(Invert, Group3)
+
+# Calculate the total number of rows in the data frame
+total_rowsI <- nrow(Invert)
+
+# Calculate the percentage of data within each level
+percentage_per_groupI <- (invert_counts$n / total_rowsI) * 100
+
+# Add the percentages to the data frame
+invert_counts$Percentage <- percentage_per_groupI
+
+# Print or display the result
+print(invert_counts)
+
+## How many species within each group
+
+Invert %>%
+  pull(Species) %>%
+  n_distinct()
+
+reptiles %>%
+  pull(Species) %>%
+  n_distinct()
+
+## Seperate the fish and amphibians to get their species counts
+fish <- data %>% filter(Major.group %in% c("Fish"))
+amphibians <- data %>% filter(Major.group %in% c("Amphibian"))
+
+
+fish %>%
+  pull(Species) %>%
+  n_distinct()
+
+
+amphibians %>%
+  pull(Species) %>%
+  n_distinct()
+
+SeaTurts %>%
+  pull(Species) %>%
+  n_distinct()
+
+# Calculate the counts for each level of sea turtle
+seaturts_counts <- count(SeaTurts, Species)
+
+# Calculate the total number of rows in the data frame
+total_rowsST <- nrow(SeaTurts)
+
+# Calculate the percentage of data within each level
+percentage_per_groupST <- (seaturts_counts$n / total_rowsST) * 100
+
+# Add the percentages to the data frame
+seaturts_counts$Percentage <- percentage_per_groupST
+
+# Print or display the result
+print(seaturts_counts)
+
+## I want to see if a certain author appears more often than others
+
+# Specify the target word you want to search for
+target_word <- "Shine"
+
+# Search for the target word in the 'Author' column and count unique occurrences
+word_counts <- sum(grepl(target_word, data$authors, ignore.case = TRUE, fixed = TRUE))
+
+# Print or display the count
+cat("Occurrences of", target_word, ":", word_counts, "\n")
+
+## 17 datapoints attributed to Shine
+
+# Specify the target word you want to search for
+target_word <- "Janzen"
+
+# Search for the target word in the 'Author' column and count unique occurrences
+word_counts <- sum(grepl(target_word, data$authors, ignore.case = TRUE, fixed = TRUE))
+
+# Print or display the count
+cat("Occurrences of", target_word, ":", word_counts, "\n")
+
+## 20 datapoints attributed to Janzen
+
+
+
 ## Look at the difference between using a GAM and a LMER model using all the data, not grouped 
 
 valid.lm <- lmer(Mean ~ abs(Lat) + (1|study_ID) + (1|Species), data = data, REML = TRUE, na.action = na.exclude)
@@ -131,10 +249,10 @@ summary(pglmm)
 
 
 # Change the reference level for Major.group
-data$Major.group <- relevel(data$Major.group, ref = "Reptile")
+data$Major.group <- relevel(data$Major.group, ref = "Fish")
 
 
-pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID), 
+pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
@@ -147,11 +265,10 @@ summary(pglmm2)
 
 # I want to get a p-value for the interaction on its own, so I will perform a 
 # maximum liklihood test
-
 ## cant seem to use the anova function with a pglmm, tried lmertest and lmtest. 
 
 
-pglmm3 <- phyr::pglmm(Mean ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID), 
+pglmm3 <- phyr::pglmm(Mean ~ abs(Lat)*Group2-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
@@ -165,13 +282,24 @@ summary(pglmm3)
 ## similar mean nest temperatures in relation to latitude, compared to species that
 ## are more distantly related.
 
-pglmm4 <- phyr::pglmm(Mean ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID), 
+pglmm4 <- phyr::pglmm(Mean ~ abs(Lat)*Water + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
 summary(pglmm4)
 # The interaction between latitude and temperatures between animals that lay their eggs in 
 # the water or on land is significant, nothing else is. Weird interpretation. 
+
+
+# Count the number of non-missing values in the column
+sum(!is.na(data$Mean))
+
+# Calculate the range of values in the column
+range(data$Mean, na.rm = TRUE)
+
+
+
+
 
 
 ############################ Standard deviation analysis #########################
@@ -231,7 +359,7 @@ summary(pglmmSD)
 
 
 # Add in major taxanomic group to take a look if there are any patterns there
-pglmmSD2 <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+pglmmSD2 <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group-1 + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                        data = data, 
                        cov_ranef = list(sp = tl2$tip.label),
                        family = "gaussian")
@@ -242,7 +370,7 @@ summary(pglmmSD2)
 
 ### Some more models with the different groupings of the taxa
 ## Reptiles only
-pglmmSD3 <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID), 
+pglmmSD3 <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
@@ -253,7 +381,7 @@ summary(pglmmSD3)
 
 
 ### Grouped by laying eggs in the water or on land 
-pglmmSD4 <- phyr::pglmm(Among_SD ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID), 
+pglmmSD4 <- phyr::pglmm(Among_SD ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                         data = data, 
                         cov_ranef = list(sp = tl2$tip.label),
                         family = "gaussian")

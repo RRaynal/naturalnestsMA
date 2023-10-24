@@ -26,6 +26,7 @@ data$Long <- as.numeric(data$Long)
 data$Lat <- as.numeric(data$Lat)
 data$Mean <- as.numeric(data$Mean)
 data$Major.group <- as.factor(data$Major.group)
+reptiledata$Group2 <- as.factor(reptiledata$Group2)
 
 reptiles <- data %>% filter(Group2 %in% c("Sea Turtle", "Freshwater Turtle", "Crocodilian", "Lizard/snake"))
 
@@ -34,6 +35,7 @@ reptiles <- data %>% filter(Group2 %in% c("Sea Turtle", "Freshwater Turtle", "Cr
 
 ## validating the missing mean temperature data from minimum and maximum mean temps ##
 valid <- lm(Mean ~ test, data = data)
+
 summary(valid)
 # r=0.9863
 # slope=1.06
@@ -42,7 +44,7 @@ summary(valid)
 ## Basic stats of data make up 
 
 # Calculate the counts for each level of Major.group
-group_counts <- count(data, Major.group)
+group_counts <- count(SDdata, Group2)
 
 # Calculate the total number of rows in the data frame
 total_rows <- nrow(data)
@@ -133,7 +135,6 @@ print(seaturts_counts)
 
 ## I want to see if a certain author appears more often than others
 
-# Specify the target word you want to search for
 target_word <- "Shine"
 
 # Search for the target word in the 'Author' column and count unique occurrences
@@ -183,7 +184,6 @@ AIC(valid.gam)
 
 ####################### Phylogeny #############################
 
-
 #load species list
 speciesList2<- read_csv("species.csv")
 
@@ -228,6 +228,7 @@ data$phylogeny <- data$Animal
 
 #################################################################
 ## Try a PGLMM - a linear mixed effect model that includes a phylogeny
+#################################################################
 
 library(phyr)
 library(ape)
@@ -236,60 +237,136 @@ data$study_ID <- as.character(data$study_ID)
 data$sp_ <- data$Animal
 data$Mean <- as.numeric(data$Mean)
 
-# First run a model without any grouping.
+# First run an intercept model 
 
-pglmm <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+pglmmint <- phyr::pglmm(Mean ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                      data = data, 
                      cov_ranef = list(sp = tl2$tip.label),
                      family = "gaussian")
-summary(pglmm)
+summary(pglmmint)
+
+#logLik    AIC    BIC 
+#-951   1912   1926 
+
+pglmmlat <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                     data = data, 
+                     cov_ranef = list(sp = tl2$tip.label),
+                     family = "gaussian")
+summary(pglmmlat)
+
+#logLik    AIC    BIC 
+#-948.5 1908.9 1925.9 
 
 
-# The phylogeny is accounting for most of the variance, however absolute latitude is not significant
 
+#Change the reference level for Major.group
+data$Major.group <- relevel(data$Major.group, ref = "Reptile")
 
-# Change the reference level for Major.group
-data$Major.group <- relevel(data$Major.group, ref = "Fish")
+pglmmgroup <- phyr::pglmm(Mean ~ Major.group-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                          data = data, 
+                          cov_ranef = list(sp = tl2$tip.label),
+                          family = "gaussian")
+summary(pglmmgroup)
 
+#logLik    AIC    BIC 
+#-928.8 1873.7 1896.3 
 
-pglmm2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+pglmmgroup2 <- phyr::pglmm(Mean ~ abs(Lat) + Major.group-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
-summary(pglmm2)
+summary(pglmmgroup2)
 
+#logLik    AIC    BIC 
+#-926.4 1870.9 1896.3 
 
-# The inclusion of the "Major.group" as a fixed effect in the second model has revealed significant 
-# interactions between abs(Lat) and the different levels of "Major.group," which were not evident in the first model
-# with only abs(Lat) as the fixed effect. The effect of abs(Lat) on Mean varies across different groups 
+pglmmgroup2 <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                           data = data, 
+                           cov_ranef = list(sp = tl2$tip.label),
+                           family = "gaussian")
+summary(pglmmgroup2)
 
-# I want to get a p-value for the interaction on its own, so I will perform a 
-# maximum liklihood test
-## cant seem to use the anova function with a pglmm, tried lmertest and lmtest. 
+#logLik    AIC    BIC 
+#-910.1 1844.2 1878.1 
 
-
-pglmm3 <- phyr::pglmm(Mean ~ abs(Lat)*Group2-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+pglmmwater <- phyr::pglmm(Mean ~ Water-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
-summary(pglmm3)
+summary(pglmmwater)
 
-
-## The effect of absolute latitude on the mean is only significant between crocodiles and lizards/snakes
-## weird.
-## The phylogeny is absorbing a lot of the variance across all the models
-## species that share a closer evolutionary relationship are expected to have more
-## similar mean nest temperatures in relation to latitude, compared to species that
-## are more distantly related.
+#logLik    AIC    BIC 
+#-935.7 1883.3 1900.3
 
 pglmm4 <- phyr::pglmm(Mean ~ abs(Lat)*Water + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
                       data = data, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
 summary(pglmm4)
-# The interaction between latitude and temperatures between animals that lay their eggs in 
-# the water or on land is significant, nothing else is. Weird interpretation. 
 
+##logLik    AIC    BIC 
+##-928.3 1872.6 1895.2 
+
+pglmm4 <- phyr::pglmm(Mean ~ abs(Lat) + Water-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                      data = data, 
+                      cov_ranef = list(sp = tl2$tip.label),
+                      family = "gaussian")
+summary(pglmm4)
+
+#logLik    AIC    BIC 
+#-933.2 1880.4 1900.2 
+
+## These models only use the reptile data so they can't be compared to the above 
+## which use all the data
+
+reptiledata <- data %>% filter(Major.group %in% c("Reptile"))
+reptiledata$Group2 <- relevel(reptiledata$Group2, ref = "Sea Turtle")
+
+pglmmrepint <- phyr::pglmm(Mean ~ (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                        data = reptiledata, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmrepint)
+
+#logLik    AIC    BIC 
+#-637.4 1284.9 1297.8 
+
+pglmmreplat <- phyr::pglmm(Mean ~ abs(Lat) + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                           data = reptiledata, 
+                           cov_ranef = list(sp = tl2$tip.label),
+                           family = "gaussian")
+summary(pglmmreplat)
+
+#logLik    AIC    BIC 
+#-635.4 1282.9 1298.4 
+
+pglmmrep <- phyr::pglmm(Mean ~ Group2-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                        data = reptiledata, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmrep)
+
+#logLik    AIC    BIC 
+#-606.8 1229.6 1250.2 
+
+
+pglmmrep <- phyr::pglmm(Mean ~ abs(Lat)*Group2 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                        data = reptiledata, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmrep)
+
+#logLik    AIC    BIC 
+#-597.4 1218.8 1249.7 
+
+pglmmrep2 <- phyr::pglmm(Mean ~ abs(Lat) + Group2-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
+                         data = reptiledata, 
+                         cov_ranef = list(sp = tl2$tip.label),
+                         family = "gaussian")
+summary(pglmmrep2)
+
+#logLik    AIC    BIC 
+#-604.7 1227.3 1250.6 
 
 # Count the number of non-missing values in the column
 sum(!is.na(data$Mean))
@@ -345,6 +422,17 @@ AIC(validSD.gam)
 ## Using lmer or GAM doesnt seem to be different, linear models are much easier
 ## to interpret so will continue with linear unless everyone else thinks otherwise. 
 
+
+#Intercept only
+pglmmSDint <- phyr::pglmm(Among_SD ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                       data = data, 
+                       cov_ranef = list(sp = tl2$tip.label),
+                       family = "gaussian")
+summary(pglmmSDint)
+
+#logLik    AIC    BIC 
+#-272.7  555.3  567.3 
+
 ##pglmm - is standard deviation different across latitude?
 
 pglmmSD <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
@@ -353,44 +441,137 @@ pglmmSD <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | A
                      family = "gaussian")
 summary(pglmmSD)
 
+#logLik    AIC    BIC 
+#-265.4  542.8  557.1 
+
 # INTERESTING - phylogeny is not absorbing most of the variance, variance across the random effects
 # is quite low. In addition, there is a very significant relationship between standard deviation among nests
 # and absolute latitude. As latitude increases, SD increases.
 
+pglmmSDgr <- phyr::pglmm(Among_SD ~ Major.group-1 + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                        data = data, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSDgr)
+
+#logLik    AIC    BIC 
+#-267.2  550.3  569.5
+
+pglmmSD2 <- phyr::pglmm(Among_SD ~ abs(Lat)+Major.group-1 + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                        data = data, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSD2)
+
+#logLik    AIC    BIC 
+#-260.9  539.8  561.4 
+
 
 # Add in major taxanomic group to take a look if there are any patterns there
-pglmmSD2 <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group-1 + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+pglmmSDinteract <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                        data = data, 
                        cov_ranef = list(sp = tl2$tip.label),
                        family = "gaussian")
-summary(pglmmSD2)
+summary(pglmmSDinteract)
+
+#logLik    AIC    BIC 
+#-256.2  536.5  565.2 
+
 # However, when you add in the taxanomic groups, latitude is no longer a significant predictor, 
 # now nothing is significant.
 
 
+
+
 ### Some more models with the different groupings of the taxa
 ## Reptiles only
-pglmmSD3 <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
-                      data = data, 
+pglmmSDrepint <- phyr::pglmm(Among_SD ~ (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                        data = reptiledata, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSDrepint)
+
+#logLik    AIC    BIC 
+#-199.0  407.9  419.2 
+
+# Count non-missing values in Among_SD column
+num_non_missing <- sum(!is.na(reptiledata$Among_SD))
+
+
+
+
+pglmmSDreplat <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                      data = reptiledata, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
-summary(pglmmSD3)
+summary(pglmmSDreplat)
+
+#logLik    AIC    BIC 
+#-195.1  402.1  415.7 
+
+
+pglmmSDrepgr <- phyr::pglmm(Among_SD ~ Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                        data = reptiledata, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSDrepgr)
 
 ## Same as above, no significance and no difference between reptile groups
 
+#logLik    AIC    BIC 
+#-189.5  395.0  412.9
 
+pglmmSDrepgr2 <- phyr::pglmm(Among_SD ~ abs(Lat)+Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                            data = reptiledata, 
+                            cov_ranef = list(sp = tl2$tip.label),
+                            family = "gaussian")
+summary(pglmmSDrepgr2)
+
+#logLik    AIC    BIC 
+#-186.5  391.1  411.2
+
+pglmmSDrepgrint <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                             data = reptiledata, 
+                             cov_ranef = list(sp = tl2$tip.label),
+                             family = "gaussian")
+summary(pglmmSDrepgrint)
+
+#logLik    AIC    BIC 
+#-183.1  390.2  417.0 
 
 ### Grouped by laying eggs in the water or on land 
+pglmmSDwater <- phyr::pglmm(Among_SD ~ Water + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                        data = data, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSDwater)
+
+#logLik    AIC    BIC 
+#-271.4  554.8  569.1
+
+pglmmSDlatwat <- phyr::pglmm(Among_SD ~ abs(Lat)+Water-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                        data = data, 
+                        cov_ranef = list(sp = tl2$tip.label),
+                        family = "gaussian")
+summary(pglmmSDlatwat)
+
+#logLik    AIC    BIC 
+#-264.4  542.7  559.5 
+
+
+## latitude is significant, interaction is close
+
 pglmmSD4 <- phyr::pglmm(Among_SD ~ abs(Lat)*Water + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                         data = data, 
                         cov_ranef = list(sp = tl2$tip.label),
                         family = "gaussian")
 summary(pglmmSD4)
 
-## latitude is significant, interaction is close
+#logLik    AIC    BIC 
+#-261.8  539.6  558.7 
 
 ## Latitude seems to be the most important determinant of among nest SD
-# Now lets make some graphics
+
 
 
 
@@ -487,11 +668,23 @@ data2<-as.data.frame(data2)
 mod<- MCMCglmm(Mean ~ abs(Lat),
                random= ~study_ID+Species+tip.label, 
                ginverse=list(tip.label = Ainv),
-               nitt=10000,
-               thin=50,
-               burnin=3000,
+               nitt = 100000,
+               thin = 40, 
+               burnin = 20000,
                prior=prior,
+               pr= TRUE,
+               verbose = FALSE,
                data=data2)
+
+new_data <- data.frame(Mean = NA,
+                       Lat = seq(min(data2$Lat), max(data2$Lat), 100),
+                       tip.label = NA, 
+                       study_ID = NA,
+                       Species = NA)
+
+pred <- predict(mod, newdata = new_data, marginal=NULL, interval = "confidence")
+
+
 summary(mod)
 ggplot(data, aes(x=abs(Lat), y=Mean))+geom_point()+geom_smooth(method="lm")
 

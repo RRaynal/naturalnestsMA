@@ -106,7 +106,10 @@ data2$animal <-data2$tip.label
 Ainv<- inverseA(tl2_brlen)$Ainv
 
 data2<-as.data.frame(data2)
-mod<- MCMCglmm(Mean ~ abs(Lat)*Major.group,
+
+data2 <- mutate(data2, abs_lat = abs(Lat)) # Added absolute latitude column
+
+mod<- MCMCglmm(Mean ~ abs_lat*Major.group,
                random= ~study_ID+Species+animal, 
                pedigree = tl2_brlen,
                #ginverse=list(tip.label = Ainv),
@@ -115,7 +118,7 @@ mod<- MCMCglmm(Mean ~ abs(Lat)*Major.group,
                burnin = 20000,
                prior=prior,
                pr= TRUE,
-               verbose = TRUE,
+               verbose = FALSE,
                data=data2)
 
 summary(mod)
@@ -123,40 +126,61 @@ plot(mod)
 
 # Specify the latitude ranges for each Major.group
 
-latitude_ranges <- list(
-  Amphibian = seq(-43.24, 45, 0.25),
-  Reptile = seq(-42.98, 62.4, 0.25),
-  Invertebrate = seq(-41.11, 62.8, 0.25),
-  Fish = seq(-1.21, 48, 0.25)
-)
-
-# Initialize an empty list to store the estimated means
-estimates_list <- list()
-
-# Loop through each Major.group and its associated latitude range
-for (group in names(latitude_ranges)) {
-  # Make predictions for this group using the specific latitudes
-  est <- emmeans(mod, specs = "Lat", data = data2, 
-                 at = list(Lat = latitude_ranges[[group]]))
-  
-  # Store the estimates in the list
-  estimates_list[[group]] <- as.tibble(est)
-}
+# latitude_ranges <- list(
+#   Amphibian = seq(-43.24, 45, 0.25),
+#   Reptile = seq(-42.98, 62.4, 0.25),
+#   Invertebrate = seq(-41.11, 62.8, 0.25),
+#   Fish = seq(-1.21, 48, 0.25)
+# )
 
 
+data_amphibian <- data.frame(Major.group = "Amphibian",
+                             abs_lat = seq(min(data2$abs_lat[data2$Major.group == "Amphibian"]), max(data2$abs_lat[data2$Major.group == "Amphibian"]), length = 10))
+data_reptile <- data.frame(Major.group = "Reptile",
+                             abs_lat = seq(min(data2$abs_lat[data2$Major.group == "Reptile"]), max(data2$abs_lat[data2$Major.group == "Reptile"]), length = 10))
+data_invert  <- data.frame(Major.group = "Invertebrate",
+                             abs_lat = seq(min(data2$abs_lat[data2$Major.group == "Invertebrate"]), max(data2$abs_lat[data2$Major.group == "Invertebrate"]), length = 10))
+data_fish <- data.frame(Major.group = "Fish",
+                             abs_lat = seq(min(data2$abs_lat[data2$Major.group == "Fish"]), max(data2$abs_lat[data2$Major.group == "Fish"]), length = 10))
+new_data <- rbind(data_amphibian,
+                  data_reptile,
+                  data_invert,
+                  data_fish) # Create dataframe with the right latitudinal range for each taxon
+
+# # Initialize an empty list to store the estimated means
+# estimates_list <- list()
+# 
+# # Loop through each Major.group and its associated latitude range
+# for (group in names(latitude_ranges)) {
+#   # Make predictions for this group using the specific latitudes
+#   est <- emmeans(mod, specs = "abs_lat", by = "Major.group", data = data2, 
+#                  at = list(Lat = latitude_ranges[[group]]))
+#   
+#   # Store the estimates in the list
+#   estimates_list[[group]] <- as.tibble(est)
+# }
+
+
+est <- emmeans(mod, specs = "abs_lat", by  = "Major.group", data = data2, 
+               at = list(abs_lat = new_data$abs_lat)) # Predict values based on the latitudinal range in new_data
+
+est.data <- as.data.frame(est)
+
+est.data <- est.data %>%
+  inner_join(new_data, by = c("Major.group", "abs_lat")) # Only keep the predictions for the latitudinal range of each taxon
 
 # This code didn't create a column for the group names, so I am writing it to do it manually.
-write.csv(est.data, file = "data2mod.csv", row.names = FALSE)
+#write.csv(est.data, file = "data2mod.csv", row.names = FALSE)
 #data with groups
-est.data <- read_csv("data2mod.csv")
+#est.data <- read_csv("data2mod.csv")
 
 ## Now make some scatterplots using the predictions
-est.data$Major.group <- as.factor(est.data$Major.group)
+#est.data$Major.group <- as.factor(est.data$Major.group)
 
-Majorscat <- ggplot(est.data, aes(x = abs(Lat), y = emmean, col = Major.group, fill = Major.group )) +
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, col = Major.group, fill = Major.group), alpha = 0.2) +
-  geom_point(data = data, aes(x = abs(Lat), y = Mean, col = Major.group, fill = Major.group), size = 2) +
-  geom_line(data = est.data, aes(group = Major.group), size = 1, linewidth = 1) +  # Use linewidth instead of size
+Majorscat <- ggplot(est.data, aes(x = abs_lat, y = emmean, col = Major.group, fill = Major.group )) +
+  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = Major.group), alpha = 0.2, col = NA) +
+  geom_point(data = data2, aes(x = abs_lat, y = Mean, col = Major.group, fill = Major.group), size = 4, alpha=0.6) +
+  geom_line(data = est.data, aes(group = Major.group), size = 2, linewidth = 2.5) +  # Use linewidth instead of size
   labs(x = "", y = "") +
   theme_bw() +
   scale_colour_brewer(palette = "Spectral", direction = 1) +

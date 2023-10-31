@@ -9,7 +9,7 @@ library(stats)
 library(viridis)
 library(tidyverse)
 library(ggthemes)
-
+library(MCMCglmm)
 library(phytools)
 library(rotl)
 library(ape)
@@ -82,8 +82,6 @@ reptiles$Group2 <- as.factor(reptiles$Group2)
 #Change the reference level for Major.group
 data$Major.group <- relevel(data$Major.group, ref = "Reptile")
 
-## Try Bayesian model instead, then use the predict function from the MCMCglmm package
-library(MCMCglmm)
 
 ### Run a Bayesian model #####
 
@@ -147,13 +145,12 @@ for (group in names(latitude_ranges)) {
 
 
 
-# Replace 'your_file_path.csv' with the actual file path where you want to save the data.
+# This code didn't create a column for the group names, so I am writing it to do it manually.
 write.csv(est.data, file = "data2mod.csv", row.names = FALSE)
-
+#data with groups
 est.data <- read_csv("data2mod.csv")
 
 ## Now make some scatterplots using the predictions
-
 est.data$Major.group <- as.factor(est.data$Major.group)
 
 Majorscat <- ggplot(est.data, aes(x = abs(Lat), y = emmean, col = Major.group, fill = Major.group )) +

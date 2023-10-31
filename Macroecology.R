@@ -307,14 +307,8 @@ summary(pglmm4)
 ##logLik    AIC    BIC 
 ##-928.3 1872.6 1895.2 
 
-pglmm4 <- phyr::pglmm(Mean ~ abs(Lat) + Water-1 + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
-                      data = data, 
-                      cov_ranef = list(sp = tl2$tip.label),
-                      family = "gaussian")
-summary(pglmm4)
 
-#logLik    AIC    BIC 
-#-933.2 1880.4 1900.2 
+
 
 ## These models only use the reptile data so they can't be compared to the above 
 ## which use all the data
@@ -427,19 +421,68 @@ AIC(validSD.gam)
 pglmmSDint <- phyr::pglmm(Among_SD ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                        data = data, 
                        cov_ranef = list(sp = tl2$tip.label),
-                       family = "gaussian")
+                       family = "gaussian") 
 summary(pglmmSDint)
 
-#logLik    AIC    BIC 
-#-272.7  555.3  567.3 
+# Get the residuals from your pglmm model
+residuals <- residuals(pglmmSDint)
 
-##pglmm - is standard deviation different across latitude?
+# Create a scatterplot of residuals vs. fitted values
+plot(fitted(pglmmSDint), residuals,
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs. Fitted Values",
+     pch = 16, col = "blue")
+abline(h = 0, col = "red", lty = 2)
 
-pglmmSD <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
-                     data = data, 
+## Fan shaped residuals, so I will need to log SD.
+
+data$Among_SD_log <- log(data$Among_SD)
+data <- data %>%
+  filter(!is.infinite(Among_SD_log))
+data <- data %>%
+  filter(Among_SD != 0)
+
+SD_data <- data %>% filter(!is.na(Among_SD_log))
+
+# check the model residuals now
+
+pglmmSD <- phyr::pglmm(Among_SD_log ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                          data = SD_data, 
+                          cov_ranef = list(sp = tl2$tip.label),
+                          family = "gaussian") 
+summary(pglmmSD)
+
+# Get the residuals from your pglmm model
+residuals <- residuals(pglmmSDint)
+
+# Create a scatterplot of residuals vs. fitted values
+plot(fitted(pglmmSDint), residuals,
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs. Fitted Values",
+     pch = 16, col = "blue")
+abline(h = 0, col = "red", lty = 2)
+
+## This looks better, residuals are scattered around the 
+
+##pglmm Check the full model preferred by AIC model selection
+
+pglmmSD <- phyr::pglmm(Among_SD_log ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                     data = SD_data, 
                      cov_ranef = list(sp = tl2$tip.label),
                      family = "gaussian")
 summary(pglmmSD)
+
+
+plotSD <- ggplot(SD_data, aes(x = abs(Lat), y = Among_SD_log, col = Major.group)) +
+  geom_point() + geom_smooth(method = "lm") +
+  labs(x = "", y = "") +
+  theme_bw() +
+  scale_colour_brewer(palette = "Spectral", direction = 1) +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"),
+        axis.title.y = element_text(size = 10))  # Adjust the size as needed
+plotSD
+
+# AIC Selection models:
 
 #logLik    AIC    BIC 
 #-265.4  542.8  557.1 
@@ -473,6 +516,7 @@ pglmmSDinteract <- phyr::pglmm(Among_SD ~ abs(Lat)*Major.group + (1 | sp_) + (1 
                        cov_ranef = list(sp = tl2$tip.label),
                        family = "gaussian")
 summary(pglmmSDinteract)
+residuals(pglmmSDinteract)
 
 #logLik    AIC    BIC 
 #-256.2  536.5  565.2 
@@ -481,12 +525,13 @@ summary(pglmmSDinteract)
 # now nothing is significant.
 
 
+#AIC selection prefers the interaction model
 
+reptileSDdata <- SD_data %>% filter(Major.group %in% c("Reptile"))
 
-### Some more models with the different groupings of the taxa
 ## Reptiles only
-pglmmSDrepint <- phyr::pglmm(Among_SD ~ (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
-                        data = reptiledata, 
+pglmmSDrepint <- phyr::pglmm(Among_SD_log ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                        data = reptileSDdata, 
                         cov_ranef = list(sp = tl2$tip.label),
                         family = "gaussian")
 summary(pglmmSDrepint)
@@ -494,14 +539,11 @@ summary(pglmmSDrepint)
 #logLik    AIC    BIC 
 #-199.0  407.9  419.2 
 
-# Count non-missing values in Among_SD column
-num_non_missing <- sum(!is.na(reptiledata$Among_SD))
 
 
 
-
-pglmmSDreplat <- phyr::pglmm(Among_SD ~ abs(Lat) + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
-                      data = reptiledata, 
+pglmmSDreplat <- phyr::pglmm(Among_SD_log ~ abs(Lat) + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+                      data = reptileSDdata, 
                       cov_ranef = list(sp = tl2$tip.label),
                       family = "gaussian")
 summary(pglmmSDreplat)
@@ -510,7 +552,7 @@ summary(pglmmSDreplat)
 #-195.1  402.1  415.7 
 
 
-pglmmSDrepgr <- phyr::pglmm(Among_SD ~ Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+pglmmSDrepgr <- phyr::pglmm(Among_SD_log ~ Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                         data = reptiledata, 
                         cov_ranef = list(sp = tl2$tip.label),
                         family = "gaussian")
@@ -521,7 +563,7 @@ summary(pglmmSDrepgr)
 #logLik    AIC    BIC 
 #-189.5  395.0  412.9
 
-pglmmSDrepgr2 <- phyr::pglmm(Among_SD ~ abs(Lat)+Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+pglmmSDrepgr2 <- phyr::pglmm(Among_SD_log ~ abs(Lat)+Group2-1 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                             data = reptiledata, 
                             cov_ranef = list(sp = tl2$tip.label),
                             family = "gaussian")
@@ -530,7 +572,7 @@ summary(pglmmSDrepgr2)
 #logLik    AIC    BIC 
 #-186.5  391.1  411.2
 
-pglmmSDrepgrint <- phyr::pglmm(Among_SD ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
+pglmmSDrepgrint <- phyr::pglmm(Among_SD_log ~ abs(Lat)*Group2 + (1 | sp_) + (1 | study_ID)+ (1 | Animal), 
                              data = reptiledata, 
                              cov_ranef = list(sp = tl2$tip.label),
                              family = "gaussian")
@@ -665,7 +707,7 @@ data2$Lat[is.na(data2$Lat)] <- mean(data2$Lat, na.rm = TRUE)
 Ainv<- inverseA(tl2_brlen)$Ainv
 
 data2<-as.data.frame(data2)
-mod<- MCMCglmm(Mean ~ abs(Lat),
+mod<- MCMCglmm(Mean ~ abs(Lat)*Group,
                random= ~study_ID+Species+tip.label, 
                ginverse=list(tip.label = Ainv),
                nitt = 100000,
@@ -682,11 +724,39 @@ new_data <- data.frame(Mean = NA,
                        study_ID = NA,
                        Species = NA)
 
+summary(mod)
+ggplot(data, aes(x=abs(Lat), y=Mean))+geom_point()+geom_smooth(method="lm")
+
+# Create new_data with the same structure as the original data
+new_data <- data2
+
+# Specify the values for the predictor variable you want to predict (Mean)
+new_data$Mean <- NA
+
+# Specify the range of values for Lat
+new_data$Lat <- seq(min(data2$Lat), max(data2$Lat), length.out = nrow(data2))
+
+
 pred <- predict(mod, newdata = new_data, marginal=NULL, interval = "confidence")
 
 
-summary(mod)
-ggplot(data, aes(x=abs(Lat), y=Mean))+geom_point()+geom_smooth(method="lm")
+## errors
+
+# Error in MCMCglmm(fixed = object$Fixed$formula, random = object$Random$formula,  : 
+ # all data are missing. Use singular.ok=TRUE to sample these effects, but use an informative prior!
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Differences between taxa
 mod2<- MCMCglmm(Mean ~ abs(Lat)+Group,

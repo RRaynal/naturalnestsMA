@@ -83,9 +83,9 @@ data$Major.group <- relevel(data$Major.group, ref = "Reptile")
 
 
 pglmmfull <- phyr::pglmm(Mean ~ abs(Lat)*Major.group + (1 | sp_) + (1 | Animal) + (1 | study_ID), 
-                           data = data, 
-                           cov_ranef = list(sp = tl2$tip.label),
-                           family = "gaussian")
+                         data = data, 
+                         cov_ranef = list(sp = tl2$tip.label),
+                         family = "gaussian")
 summary(pglmmfull)
 
 #Generate data for predictions (Patrice code)
@@ -126,33 +126,23 @@ prior <- list(R = list(V = 1, nu = 0.002),
 
 
 data$tip.label <- data$Animal
-
 data2<- data[data$tip.label %in% tl2_brlen$tip.label, ]
 data2$Lat[is.na(data2$Lat)] <- mean(data2$Lat, na.rm = TRUE)
+data2$animal <-data2$tip.label
+
 
 Ainv<- inverseA(tl2_brlen)$Ainv
 
-data2<-as.data.frame(data2)
-mod<- MCMCglmm(Mean ~ abs(Lat)*Group,
-               random= ~study_ID+Species+tip.label, 
-               ginverse=list(tip.label = Ainv),
-               nitt = 100000,
-               thin = 40, 
-               burnin = 20000,
-               prior=prior,
-               pr= TRUE,
-               verbose = FALSE,
-               data=data2)
 
-summary(mod)
-plot(mod)
-## nice trace plots, this seems like a good number of iterations
+  ## nice trace plots, this seems like a good number of iterations
 
-new_data <- data.frame(Mean = NA,
-                       Lat = seq(min(data2$Lat), max(data2$Lat), 100),
-                       tip.label = NA, 
-                       study_ID = NA,
-                       Species = NA)
+## below is Patrices code for new_data
+  
+  new_data <- data.frame(Mean = NA,
+                         Lat = seq(min(data2$Lat), max(data2$Lat), 100),
+                         tip.label = NA, 
+                         study_ID = NA,
+                         Species = NA)
 
 
 
@@ -169,9 +159,10 @@ new_data$Mean <- NA
 new_data$Lat <- seq(min(data2$Lat), max(data2$Lat), length.out = nrow(data2))
 
 
+#Predict method for MCMCglmm
+
 pred <- predict(mod, newdata = new_data, marginal=NULL, interval = "confidence")
 
 
 # Error in MCMCglmm(fixed = object$Fixed$formula, random = object$Random$formula,  : 
 # all data are missing. Use singular.ok=TRUE to sample these effects, but use an informative prior!
-

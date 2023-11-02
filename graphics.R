@@ -29,11 +29,12 @@ data$Mean <- as.numeric(data$Mean)
 ## Make a nice figure using ggarrange 
 scale_fill_brewer(palette="Set3", direction = -1)
 
-# Set up a common color vector for all plots
+# Set up a common color vector for all plots: subject
 subject_colors <- c("Breeding ecology"="#8AABDF", "Climate change" = "#E57970", "Disease" = "#6177A2", "General ecology" = "#F4AFDD", "Nest site selection" = "#629A61", "Offspring phenotype" = "#62C8D8",
 "Other"= "#C9EF97", "Sex ratio" = "#9B7FC7", "Species management" = "#7FC784", "Temperature manipulation" = "#EBD073", "Thermoregulation" = "#E5A270")
 
-
+# Set up a common color vector for all plots: Major taxa
+subject_colors <- c("Reptiles" = ""
 
 
 #####################################
@@ -880,6 +881,12 @@ ggarrange(PY, PN,
     guides(fill = guide_legend(title = "Topics")) +
     scale_fill_manual(values = subject_colors) +
     theme_bw()
+  
+  
+  
+  
+  
+  
   
 
 ### Not using any of the below at the moment ##

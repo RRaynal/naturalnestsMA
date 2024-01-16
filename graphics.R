@@ -33,8 +33,14 @@ scale_fill_brewer(palette="Set3", direction = -1)
 subject_colors <- c("Breeding ecology"="#8AABDF", "Climate change" = "#E57970", "Disease" = "#6177A2", "General ecology" = "#F4AFDD", "Nest site selection" = "#629A61", "Offspring phenotype" = "#62C8D8",
 "Other"= "#C9EF97", "Sex ratio" = "#9B7FC7", "Species management" = "#7FC784", "Temperature manipulation" = "#EBD073", "Thermoregulation" = "#E5A270")
 
-# Set up a common color vector for all plots: Major taxa
-subject_colors <- c("Reptiles" = ""
+# Major taxa
+mtaxa_colors <- c("Reptile" = "#385E9A", "Invertebrate"="#479821", "Fish"="#E1AD09", "Amphibian"="#D82E0A")
+                  
+# Reptiles
+reptile_colors <- c("Sea Turtle" = "#537FA4", "Lizard/snake"="#067715", "Crocodilian"="#AA07A8", "Freshwater Turtle"="#ADB94E")
+
+# water/land
+water_colors <- c("Water" = "#6A6EBD", "Land"="#B9824E")
 
 
 #####################################
@@ -163,319 +169,6 @@ ggplot() +
 
 
 
-
-#scatterplots
-### nest temp x lat
-## No grouping, non-linear fit
-ggplot(data, aes(x=abs(Lat), y=Mean))+
-  geom_point()+geom_smooth(formula=y~x+x^2)+ 
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2")+
-  ylim(5, 41)
-
-## No grouping, linear fit
-ggplot(data, aes(x=abs(Lat), y=Mean))+
-  geom_point()+ 
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2")+
-  ylim(5, 41)
-
-## Major taxanomic group
-data %>%
-  ggplot(aes(x = abs(Lat), y = Mean, color = Major.group)) +
-  geom_point() +
-  labs(x="Latitude", y="Mean temperature", title= "") +
-  theme_bw()
-
-# Set a threshold for the minimum number of observations in a group
-threshold <- 10
-
-filtered_data <- SeaTurts %>%
-  group_by(Name) %>%
-  filter(n() >= threshold) %>%
-  ungroup()
-
-ggplot(data = filtered_data, aes(x = abs(Lat), y = Mean, color = Name)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  labs(x = "Latitude", y = "Mean temperature", title = "") +
-  ylim(25, 35)+
-  theme_bw()
-
-##hmm🤯
-
-##scatterplot with trendlines
-Majorscat <- ggplot(data, aes(x = abs(Lat), y = Mean, col = Major.group)) +
-  geom_point() + geom_smooth(method = "lm") +
-  labs(x = "", y = "") +
-  theme_bw() +
-  scale_colour_brewer(palette = "Spectral", direction = 1) +
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"),
-        axis.title.y = element_text(size = 10))  # Adjust the size as needed
-Majorscat
-
-
-
-Majorden <- data %>% ggplot(aes(x = abs(Lat), fill = Major.group, colour = Major.group)) +
-  geom_density(alpha = 0.4) +
-  theme_bw() +
-  scale_fill_brewer(palette = "Spectral", direction = 1) +
-  scale_colour_brewer(palette = "Spectral", direction = 1) +
-  labs(x = NULL, y = "", fill = NULL, color = NULL) + 
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-
-# Create the combined plot with common legend
-Scat1 <- ggarrange(Majorden, Majorscat,
-                   common.legend = TRUE, legend = "none", align = "v",
-                   ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat1
-
-
-
-
-
-
-##scatterplot with trendlines, removing the two smaller groups
-ggplot(filter(data, Group!="Amphibian"&Group!="Fish"), aes(x=abs(Lat), y=Mean, col=Group))+geom_point()+geom_smooth(method="lm")+
-  theme_bw()
-
-##Land/water scatter
-ggplot(data, aes(x=abs(Lat), y=Mean, col=Water))+geom_point()+geom_smooth(method="lm")+
-  theme_bw()
-
-
-## Reptiles only
-##scatterplot
-
-data$Group2 <- factor(data$Group2, levels =c("Sea Turtle", "Freshwater Turtle", "Crocodilian", "Lizard/snake"))
-reptiledata<- data %>% 
-  filter(!is.na(Group2))
-
-reptilescat <- ggplot(reptiledata, aes(x=abs(Lat), y=Mean, col=Group2))+
-  geom_point()+geom_smooth(method="lm")+ 
-  labs(x="", y="") +
-  theme_bw() +
-  scale_color_brewer(palette = "PiYG")+
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
-reptilescat
-
-## Density plot
-repdensity <- reptiledata %>% ggplot(aes(x=abs(Lat), fill=Group2, colour=Group2)) +
-  geom_density(alpha=0.4) +
-  theme_bw() +
-  scale_color_brewer(palette = "PiYG") +
-  scale_fill_brewer(palette = "PiYG") +
-  labs(x = NULL, y = "", fill = NULL, color = NULL) + 
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-repdensity
-
-repdensity$data$Group2 <- str_wrap(repdensity$data$Group2, width = 10)  # Adjust the width as needed
-
-
-Scat2 <- ggarrange(repdensity, reptilescat,
-          common.legend = TRUE, legend = "left", align = "v",
-          ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat2
-## Invert only
-
-## 
-Invert <- data %>% filter(Group %in% c("4. Invertebrate")) 
-
-## Just want to take a look at the inverts compared to everything else
-invertscatall <- ggplot(data, aes(x = abs(Lat), y = Mean, col = Major.group)) +
-  geom_point() +
-  theme_bw() +
-  scale_colour_manual(values = c("Invertebrate" = "red", "Other Levels" = "blue")) +
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
-
-invertscatall
-## Inverts have some of the highest nest temps, nothing above 35 for verts except a lone sea turtle.
-# Interesting.
-
-invertscat <- ggplot(Invert, aes(x=abs(Lat), y=Mean))+
-  geom_point()+ 
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2")+
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
-invertscat
-
-invertdensity <- Invert %>% ggplot(aes(x=abs(Lat), fill=Group3, colour=Group3)) +
-  geom_density(alpha=0.4) +
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2") +
-  scale_fill_brewer(palette="Dark2") +
-  labs(x = NULL) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-invertdensity
-
-ggarrange(invertdensity, invertscat,
-          common.legend = TRUE, legend = "none", align = "v",
-          ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-
-
-## Scatter/density for the water/land
-waterscat <- ggplot(data, aes(x=abs(Lat), y=Mean, col=Water))+
-  geom_point()+geom_smooth(method="lm")+   
-  labs(x="Absolute Latitude (degrees)", y="") +
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2", direction= -1)+
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
-waterscat
-
-waterdensity <- data %>% ggplot(aes(x=abs(Lat), fill=Water, colour=Water)) +
-  geom_density(alpha=0.4) +
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2", direction= -1) +
-  scale_fill_brewer(palette="Dark2", direction= -1) +
-  labs(x = NULL, y = "", fill = NULL, color = NULL) + 
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-waterdensity
-
-Scat3 <- ggarrange(waterdensity, waterscat,
-          common.legend = TRUE, legend = "none", align = "v",
-          ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat3
-
-water_tbl <- data %>% group_by(Water)
-samplewater <- water_tbl %>% summarise(n = n())
-
-###########################################################################
-############ SD graphics ##################################################
-
-#filter the data so we are only using the lines with SD values
-SDdata <- data %>% 
-  filter(!is.na(Among_SD))
-
-
-##SD scatter - No groups 
-
-SDdata %>%
-  ggplot(aes(x = abs(Lat), y = Among_SD)) +
-  geom_point() + geom_smooth(method="lm")+ 
-  labs(x="Latitude (absolute)", y="Among nest SD (Celcius)") +
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines")) +
-  theme_bw()
-
-## SD generally increases with latitude, model shows this is significant. 
-
-## SD scatterplots major groups
-
-## SD scatterplots major groups
-SDscat <- SDdata %>%
-  ggplot(aes(x = abs(Lat), y = Among_SD, color = Major.group)) +
-  geom_point() +  geom_smooth(method="lm")+ 
-  scale_colour_brewer(palette = "Spectral", direction = 1) +
-  labs(x="", y="")+
-  xlim(0, 50) +  # Set y-axis limit to 0 to 50
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines")) +
-  theme_bw()
-SDscat
-SDscat1<- SDscat + theme(axis.title.y = element_text(size = 9))
-
-#density plot 
-SDdensity <- SDdata %>% ggplot(aes(x=abs(Lat), fill=Major.group, colour=Major.group)) +
-  geom_density(alpha=0.4) +
-  theme_bw() +
-  scale_fill_brewer(palette="Spectral", direction = 1) +
-  scale_colour_brewer(palette="Spectral", direction = 1) +
-  labs(x = NULL, y="") +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+
-  xlim(0, 50) +
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-SDdensity
-
-Scat4 <- ggarrange(SDdensity, SDscat1,
-                   common.legend = TRUE, legend = "none", align = "v",
-                   ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat4
-
-
-
-
-
-## Looks pretty messy with the trend lines in, model shows groups are not significant
-SDdata$Group2 <- factor(SDdata$Group2, levels =c("Sea Turtle", "Freshwater Turtle", "Crocodilian", "Lizard/snake"))
-SDrepdata <- data %>% 
-  filter(!is.na(Group2))
-
-SDrepscat <- SDrepdata %>%
-  ggplot(aes(x = abs(Lat), y = Among_SD, color = Group2)) +
-  geom_point() +
-  labs(x="", y="") +
-  xlim(0, 50) +
-  geom_point() + geom_smooth(method = "lm") +
-  scale_color_brewer(palette = "PiYG") +
-  theme_bw()
-SDrepscat
-
-## Very strange, Crocs and both turtles have very straight lines across latitude,
-# however lizards/snakes increase SD with latitude. 
-
-#density plot 
-SDrepdensity <- SDrepdata %>% 
-  ggplot(aes(x = abs(Lat), fill = Group2, colour = Group2)) +
-  geom_density(alpha = 0.4) +
-  theme_bw() +
-  scale_fill_brewer(palette = "PiYG") +
-  scale_color_brewer(palette = "PiYG") +
-  labs(x = NULL, y = "") + 
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
-  xlim(0, 50) +
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-SDrepdensity
-
-Scat5 <- ggarrange(SDrepdensity, SDrepscat,
-          common.legend = TRUE, legend = "none", align = "v",
-          ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat5
-
-
-## Scatter/density for the water/land
-waterscatSD <- ggplot(SDdata, aes(x=abs(Lat), y=Among_SD, col=Water))+
-  geom_point()+geom_smooth(method="lm")+   
-  labs(x="Absolute Latitude (degrees)", y="") +
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2", direction= -1)+
-  theme(plot.margin = unit(c(0, 0, 0, 0), "lines"))
-waterscatSD
-
-waterdensitySD <- SDdata %>% ggplot(aes(x=abs(Lat), fill=Water, colour=Water)) +
-  geom_density(alpha=0.4) +
-  theme_bw() +
-  scale_colour_brewer(palette="Dark2", direction= -1) +
-  scale_fill_brewer(palette="Dark2", direction= -1) +
-  labs(x = NULL, y="") +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+
-  theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-waterdensitySD
-
-Scat6 <- ggarrange(waterdensitySD, waterscatSD,
-          common.legend = TRUE, legend = "none", align = "v",
-          ncol = 1, nrow = 2, heights = c(1, 3), hjust = -0.5, vjust = 1)
-Scat6
-
-#Combine all scatterplots to make a single figure
-Big_figure <- ggarrange(
-  Scat1, Scat4, Scat2, Scat5, Scat3, Scat6,
-  common.legend = FALSE, legend = "left",
-  ncol = 2, nrow = 3,
-  widths = c(1, 1), heights = c(1, 1, 1),
-  hjust = 0.5, vjust = 0.5
-)
-
-Big_figure
-
 ###########################################################################################
 ###### Stream plot #######
 #############################################################################################
@@ -502,11 +195,17 @@ by_group$Group <- recode(by_group$Group,
 
 # Create the ggplot with geom_stream and set the stacking order using the group aesthetic
 ggplot(by_group, aes(x = year, y = n, fill = Group, group = Group)) +
-  geom_stream(extra_span = 0.4, bw = 2, type = "ridge") +
-  scale_fill_brewer(palette="Spectral", direction = -1) +
-  labs(y = "Number of studies") +
-  labs(x = "Publication year") +
-  theme_bw()
+  geom_stream(extra_span = 0.4, bw = 0.7, type = "ridge") +
+  scale_fill_brewer(palette = "Spectral", direction = -1) +
+  labs(y = "Number of studies", x = "Publication year") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 12),  # Adjust the size as needed
+        axis.text.y = element_text(size = 12),
+        axis.title.x = element_text(size = 15),  # Adjust the size as needed
+        axis.title.y = element_text(size = 15),
+        legend.text = element_text(size = 12),  # Adjust the size as needed
+        legend.title = element_text(size = 14)  # Adjust the size as needed
+  )
 
 ## ok its perfect.
 

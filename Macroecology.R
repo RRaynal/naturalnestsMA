@@ -44,10 +44,10 @@ summary(valid)
 ## Basic stats of data make up 
 
 # Calculate the counts for each level of Major.group
-group_counts <- count(SDdata, Group2)
+group_counts <- count(udata, Group)
 
 # Calculate the total number of rows in the data frame
-total_rows <- nrow(data)
+total_rows <- nrow(udata)
 
 # Calculate the percentage of data within each level
 percentage_per_group <- (group_counts$n / total_rows) * 100
@@ -74,6 +74,25 @@ reptile_counts$Percentage <- percentage_per_groupR
 # Print or display the result
 print(reptile_counts)
 
+#Sea turtle counts
+ST <- reptiles %>% filter(Group2 %in% c("Sea Turtle"))
+
+# Calculate the counts for each level of Reptile
+SeaT_counts <- count(ST, Species)
+
+# Calculate the total number of rows in the data frame
+total_rowsST <- nrow(ST)
+
+# Calculate the percentage of data within each level
+percentage_per_groupST <- (SeaT_counts$n / total_rowsST) * 100
+
+# Add the percentages to the data frame
+SeaT_counts$Percentage <- percentage_per_groupST
+
+# Print or display the result
+print(SeaT_counts)
+
+
 #Within invertebrates
 # Calculate the counts for each level of Reptile
 invert_counts <- count(Invert, Group3)
@@ -99,6 +118,10 @@ Invert %>%
 reptiles %>%
   pull(Species) %>%
   n_distinct()
+
+reptiles %>%
+  group_by(Group2) %>%
+  summarise(SpeciesCount = n_distinct(Species))
 
 ## Seperate the fish and amphibians to get their species counts
 fish <- data %>% filter(Major.group %in% c("Fish"))
@@ -416,10 +439,17 @@ AIC(validSD.gam)
 ## Using lmer or GAM doesnt seem to be different, linear models are much easier
 ## to interpret so will continue with linear unless everyone else thinks otherwise. 
 
+SD_data <- data %>% filter(!is.na(Among_SD))
+SD_data<-as.data.frame(SD_data)
+
+SD_data$Among_SD_log <- log(SD_data$Among_SD)
+SD_data <- SD_data %>%
+  filter(!is.na(Among_SD_log), !is.infinite(Among_SD_log))
+
 
 #Intercept only
-pglmmSDint <- phyr::pglmm(Among_SD ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
-                       data = data, 
+pglmmSDint <- phyr::pglmm(Among_SD_log ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+                       data = SD_data, 
                        cov_ranef = list(sp = tl2$tip.label),
                        family = "gaussian") 
 summary(pglmmSDint)
@@ -446,9 +476,9 @@ SD_data <- data %>% filter(!is.na(Among_SD_log))
 
 # check the model residuals now
 
-pglmmSD <- phyr::pglmm(Among_SD_log ~ (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+pglmmSD <- phyr::pglmm(Among_SD_log ~ (1 | Species) + (1 | study_ID) + (1 | Animal), 
                           data = SD_data, 
-                          cov_ranef = list(sp = tl2$tip.label),
+                          cov_ranef = list(tl2_brlen),
                           family = "gaussian") 
 summary(pglmmSD)
 
@@ -466,7 +496,7 @@ abline(h = 0, col = "red", lty = 2)
 
 ##pglmm Check the full model preferred by AIC model selection
 
-pglmmSD <- phyr::pglmm(Among_SD_log ~ abs(Lat)*Major.group + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
+pglmmSD <- phyr::pglmm(Among_SD_log ~ abs(Lat)*Taxa + (1 | sp_) + (1 | study_ID) + (1 | Animal), 
                      data = SD_data, 
                      cov_ranef = list(sp = tl2$tip.label),
                      family = "gaussian")

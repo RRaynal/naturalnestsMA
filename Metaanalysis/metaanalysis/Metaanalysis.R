@@ -78,7 +78,7 @@ summary(mod2)
 
 ## 4. meta-analysis including phylogeny with latitude as a moderator
 
-mod1 <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylo), mod = ~Lat, data = IDNNZR, method = 'ML')
+mod1 <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylo), mod = ~Order, data = IDNNZR, method = 'ML')
 summary(mod1)
 
 #r2_ml(mod1)
@@ -86,12 +86,12 @@ round(i2_ml(mod2),3)
 
 I2 <- orchaRd::i2_ml(english_MA)
 
-orchard_plot(mod2, mod="1", group="animal", xlab="Zr") +
-  expand_limits(y=c(-3.5,3.5)) +
+orchard_plot(mod2, mod="1", group="animal", xlab="Zr", alpha = 0.5,
+   twig.size = 2, trunk.size = 1.5, branch.size = 2) +
+  expand_limits(y=c(-3,3)) +
   scale_fill_manual(values="red") +
   scale_colour_manual(values="red")
   
-
 
 
 ## 5. Publication bias
@@ -185,14 +185,15 @@ summary(mod2s)
 
 ## 4. meta-analysis including phylogeny with mean as a moderator
 
-mod1s <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylos), mod = ~Mean, data = s.datazr, method = 'ML')
+mod1s <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylos), mod = ~Order, data = s.datazr, method = 'ML')
 summary(mod1s)
 
 #r2_ml(mod1)
 round(i2_ml(mod2s),3)
 
-orchard_plot(mod2s, mod="1", group="animal", xlab="Zr")+
-  expand_limits(y=c(-3.5,3.5)) +
+orchard_plot(mod2s, mod="1", group="animal", xlab="Zr", alpha = 0.5,
+   twig.size = 2, trunk.size = 1.5, branch.size = 2) +
+  expand_limits(y=c(-3,3)) +
   scale_fill_manual(values="blue") +
   scale_colour_manual(values="blue")
 

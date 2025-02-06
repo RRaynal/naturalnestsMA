@@ -199,8 +199,8 @@ udata<- data %>% distinct(study_ID, .keep_all = TRUE)
 year_tbl <- udata %>% group_by(Group, year)
 by_group <- year_tbl %>% summarise(n = n())
 
-by_group$Group <- factor(by_group$Group, levels =c("6. Turtle", "5. Other Reptile", "1. Crocodilian", "4. Invertebrate", "2. Amphibian", "3. Fish"))
-udata$Group <- factor(udata$Group, levels =c("6. Turtle", "5. Other Reptile", "1. Crocodilian", "4. Invertebrate", "2. Amphibian", "3. Fish"))
+by_group$Group <- factor(by_group$Group, levels =c("6. Turtle", "1. Crocodilian","5. Other Reptile","2. Amphibian","3. Fish", "4. Invertebrate" ))
+udata$Group <- factor(udata$Group, levels =c("6. Turtle", "1. Crocodilian","5. Other Reptile","2. Amphibian","3. Fish", "4. Invertebrate" ))
 
 # Rename the levels of the 'Group' factor to remove the numbers at the start
 by_group$Group <- recode(by_group$Group,
@@ -503,7 +503,7 @@ phenotype.counts <- udata %>% group_by(phenotype) %>%
 ## might be interesting to see the taxanomic make up of studies that measured phenotypes and those that didnt
 ## not sure the best way to show this, I will make two pie charts for now.
 
-phenotypey.tax <- phenotype.y %>% group_by(Group) %>% 
+phenotypey.tax <- phenotype.y %>% group_by(Major.group) %>% 
   summarise(total_count=n(),
             .groups = 'drop')
 
@@ -511,7 +511,7 @@ phenotypey.tax <- phenotype.y %>% group_by(Group) %>%
 
 ##Measured phenotypes - broad taxonomic groups
 
-PY <- ggplot(phenotypey.tax, aes(x="", y=total_count, fill=Group)) +
+PY <- ggplot(phenotypey.tax, aes(x="", y=total_count, fill=Major.group)) +
   geom_bar(stat="identity", width=1, color="white") +
   coord_polar("y", start=0) +
   guides(fill=guide_legend(title="Group")) +
@@ -527,14 +527,14 @@ PY
 
 
 ##Didn't measure phenotypes - broad taxonomic groups
-phenotypen.tax <- phenotype.n %>% group_by(Group) %>% 
+phenotypen.taxn <- phenotype.n %>% group_by(Major.group) %>% 
   summarise(total_count=n(),
             .groups = 'drop')
 
 
 ##Measured phenotypes - broad taxonomic groups
 
-PN <- ggplot(phenotypen.tax, aes(x="", y=total_count, fill=Group)) +
+PN <- ggplot(phenotypen.taxn, aes(x="", y=total_count, fill=Major.group)) +
   geom_bar(stat="identity", width=1, color="white") +
   coord_polar("y", start=0) +
   guides(fill=guide_legend(title="Group")) +
@@ -551,11 +551,15 @@ PN
 
 
 
-ggarrange(PY, PN,
+ppie <- ggarrange(PY, PN,
           labels = c(),
           common.legend = TRUE, legend = "right",
           ncol = 2, nrow = 1)
 
+filen <- "naturalnestsMA/phenotypepies"
+
+# PDF Export 
+graph2vector(x = ppie, file = paste0(filen, ".pdf"), width = 5, height = 8)
 
 
 

@@ -29,7 +29,7 @@ IDNNZR$Order <- as.factor(IDNNZR$Order)
 #rma model doesn't require dataID as the parameter is estimated by default
 normal<-rma(yi=yi, vi=vi, data=IDNNZR)
 summary(normal)
-##I2=95.71
+##I2=95.65
 
   #### 3. Generating the phylogentic tree and matrix - Based on Dan Nobles code 2016 ####
 #load the species list data 
@@ -72,26 +72,33 @@ IDNNZR$phylogeny <- IDNNZR$animal
 
 ## Meta analysis without moderators
 
-mod2 <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylo), mod = ~1, data = IDNNZR, method = 'ML')
+mod2 <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|study_ID), R = list(phylogeny=R_phylo), mod = ~1, data = IDNNZR, method = 'ML')
 summary(mod2)
 
+mod2di <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|study_ID, ~1|data_ID), R = list(phylogeny=R_phylo), mod = ~1, data = IDNNZR, method = 'ML')
+summary(mod2di)
 
-## 4. meta-analysis including phylogeny with latitude as a moderator
 
-mod1 <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylo), mod = ~Order, data = IDNNZR, method = 'ML')
-summary(mod1)
 
-#r2_ml(mod1)
+
+#random effects heterogeneity
 round(i2_ml(mod2),3)
+
 
 I2 <- orchaRd::i2_ml(english_MA)
 
-orchard_plot(mod2, mod="1", group="animal", xlab="Zr", alpha = 0.5,
-   twig.size = 2, trunk.size = 1.5, branch.size = 2) +
+id<- orchard_plot(mod2, mod="1", group="animal", xlab="Zr", alpha = 0.5,
+   twig.size = 2, trunk.size = 1.5, branch.size = 2, transfm = "tanh") +
   expand_limits(y=c(-3,3)) +
   scale_fill_manual(values="red") +
   scale_colour_manual(values="red")
+id
+
   
+filen <- "naturalnestsMA/MAid"
+# PDF Export 
+graph2vector(x = id, file = paste0(filen, ".pdf"), width = 8, height = 6)
+
 
 
 ## 5. Publication bias
@@ -183,19 +190,28 @@ mod2s <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_
 summary(mod2s)
 
 
-## 4. meta-analysis including phylogeny with mean as a moderator
-
-mod1s <- rma.mv(yi = yi, V = vi, random = list(~1|phylogeny, ~1|animal, ~1|data_ID), R = list(phylogeny=R_phylos), mod = ~Order, data = s.datazr, method = 'ML')
-summary(mod1s)
 
 #r2_ml(mod1)
 round(i2_ml(mod2s),3)
 
-orchard_plot(mod2s, mod="1", group="animal", xlab="Zr", alpha = 0.5,
-   twig.size = 2, trunk.size = 1.5, branch.size = 2) +
+## backtransform to correlation coefficient for figure
+
+strans <- orchard_plot(mod2s, mod="1", group="animal", xlab="", alpha = 0.5,
+                  twig.size = 2, trunk.size = 1.5, branch.size = 2, transfm = "tanh") +
   expand_limits(y=c(-3,3)) +
   scale_fill_manual(values="blue") +
   scale_colour_manual(values="blue")
+strans
+
+library(forcats) 
+library(export)
+library(Cairo)
+
+
+filen <- "naturalnestsMA/MAs"
+# PDF Export 
+graph2vector(x = s, file = paste0(filen, ".pdf"), width = 8, height = 6)
+
 
 
 ## 5. Publication bias
@@ -221,22 +237,26 @@ predict(mod2s)
 #combine datasets
 
 library(dplyr)
-library(ggplot2)
 
-group_tbl <- s.data %>% group_by(Order) %>% 
-  summarise(total_count=n(),
-            .groups = 'drop')
+combined_data <- bind_rows(s.data, IDNN) %>%
+  distinct(study_ID, .keep_all = TRUE)
 
-group_tbl2 <- IDNN %>% group_by(Order) %>% 
-  summarise(total_count=n(),
-            .groups = 'drop')
+# Count occurrences of each level in Order
+order_counts <- combined_data %>%
+  count(Order, name = "Order_Count")
 
-data <- left_join(group_tbl, group_tbl2, by = "Order")
-data$total_count <- data$total_count.x + data$total_count.y
+# View the result
+print(order_counts)
 
-data$total_count <- rowSums(data[, c("total_count.x", "total_count.y")], na.rm = TRUE)
+# Count occurrences of each level in Species
+species_counts <- combined_data %>%
+  count(Species, name = "Species_Count")
+
+# View the result
+print(species_counts)
 
 
+## not being used##
 
 pie <- ggplot(data, aes(x="", y=total_count, fill=Order)) +
   geom_bar(stat="identity", width=1, color="white") +

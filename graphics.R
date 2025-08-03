@@ -196,24 +196,33 @@ udata<- data %>% distinct(study_ID, .keep_all = TRUE)
 
 
 
-year_tbl <- udata %>% group_by(Group, year)
+study.no <- udata %>%
+  summarise(total_count=n(),
+            .groups = 'drop')
+study.no
+
+study.no <- SD_data %>%
+  summarise(total_count=n(),
+            .groups = 'drop')
+study.no
+
+year_tbl <- udata %>% group_by(Group2, year)
 by_group <- year_tbl %>% summarise(n = n())
 
-by_group$Group <- factor(by_group$Group, levels =c("6. Turtle", "1. Crocodilian","5. Other Reptile","2. Amphibian","3. Fish", "4. Invertebrate" ))
-udata$Group <- factor(udata$Group, levels =c("6. Turtle", "1. Crocodilian","5. Other Reptile","2. Amphibian","3. Fish", "4. Invertebrate" ))
+by_group$Group2 <- factor(by_group$Group2, levels =c("Sea Turtle", "Freshwater Turtle", "Crocodilian","Lizard/snake","2. Amphibian","3. Fish", "4. Invertebrate" ))
+udata$Group2 <- factor(udata$Group2, levels =c("Sea Turtle", "Freshwater Turtle", "Crocodilian","Lizard/snake","2. Amphibian","3. Fish", "4. Invertebrate" ))
 
 # Rename the levels of the 'Group' factor to remove the numbers at the start
-by_group$Group <- recode(by_group$Group,
-                         "6. Turtle" = "Turtle",
-                         "1. Crocodilian" = "Crocodilian",
+by_group$Group2 <- recode(by_group$Group2,
                          "2. Amphibian" = "Amphibian",
                          "3. Fish" = "Fish",
                          "4. Invertebrate" = "Arthropod",
                          "5. Other Reptile" = "Lizard/snake")
 
 # Create the ggplot with geom_stream and set the stacking order using the group aesthetic
-stream <- ggplot(by_group, aes(x = year, y = n, fill = Group, group = Group)) +
-  geom_stream(extra_span = 0.4, bw = 0.7, type = "ridge") +
+stream <- ggplot(by_group, aes(x = year, y = n, fill = Group2, group = Group2)) +
+  geom_stream(extra_span = 0.5, bw = 0.7, type = "ridge") +
+  geom_point(aes(x = year, y = n, fill = Group2, group = Group2)) +
   scale_fill_manual(values = all_colors) +
   labs(y = "Number of studies", x = "Publication year") +
   theme_bw() +
@@ -816,7 +825,7 @@ subjectpie
 
   # Major taxa
 
-  Majorscat <- ggplot(est.data, aes(x = abs_lat, y = emmean, col = Taxa, fill = Taxa)) +
+  Majorscatm <- ggplot(est.data, aes(x = abs_lat, y = emmean, col = Taxa, fill = Taxa)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = data2, aes(x = abs_lat, y = Mean), size = 3, alpha = 0.6) +
     geom_line(data = est.data, aes(group = Taxa), size = 2, linewidth = 2) +
@@ -828,11 +837,11 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  Majorscat
+  Majorscatm
   
   # histogram plot
-  Majorden <- data2 %>% ggplot(aes(x = abs_lat, fill = Taxa, colour = Taxa)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  Majordenm <- data2 %>% ggplot(aes(x = abs_lat, fill = Taxa, colour = Taxa)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
     scale_color_manual(values = mtaxa_colors) +
     scale_fill_manual(values = mtaxa_colors) +
@@ -840,12 +849,12 @@ subjectpie
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  Majorden
+  Majordenm
   # Create the combined plot with common legend
-  Scat1 <- ggarrange(Majorden, Majorscat,
+  Scat1m <- ggarrange(Majordenm, Majorscatm,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat1
+  Scat1m
   
   
 ## Reptiles only predictions and graphs ##
@@ -872,7 +881,7 @@ subjectpie
   
   ## plot these predictions 
   
-  reptilescat <- ggplot(est.dataR, aes(x = abs_lat, y = emmean, col = Group2, fill = Group2)) +
+  reptilescatm <- ggplot(est.dataR, aes(x = abs_lat, y = emmean, col = Group2, fill = Group2)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = reptiles, aes(x = abs_lat, y = Mean), size = 3, alpha = 0.6) +
     geom_line(data = est.dataR, aes(group = Group2), size = 2, linewidth = 2) +
@@ -885,11 +894,11 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  reptilescat
+  reptilescatm
   
   # histogram plot
-  reptileh <- reptiles %>% ggplot(aes(x = abs_lat, fill = Group2, colour = Group2)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  reptilehm <- reptiles %>% ggplot(aes(x = abs_lat, fill = Group2, colour = Group2)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
     scale_color_manual(values = reptile_colors) +
     scale_fill_manual(values = reptile_colors) +
@@ -897,13 +906,13 @@ subjectpie
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  reptileh
+  reptilehm
   
   # Create the combined plot with common legend
-  Scat2 <- ggarrange(reptileh, reptilescat,
+  Scat2m <- ggarrange(reptilehm, reptilescatm,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat2
+  Scat2m
   
   
   ## Predictions for "Water/land"
@@ -924,7 +933,7 @@ subjectpie
   
   # Water/land scatterplot
   
-  Waterscat <- ggplot(est.dataW, aes(x = abs_lat, y = emmean, col = Water, fill = Water)) +
+  Waterscatm <- ggplot(est.dataW, aes(x = abs_lat, y = emmean, col = Water, fill = Water)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = data2, aes(x = abs_lat, y = Mean), size = 3, alpha = 0.6) +
     geom_line(data = est.dataW, aes(group = Water), size = 2, linewidth = 2) +
@@ -937,11 +946,11 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  Waterscat
+  Waterscatm
   
   # histogram plot
-  Whist <- data2 %>% ggplot(aes(x = abs_lat, fill = Water, colour = Water)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  Whistm <- data2 %>% ggplot(aes(x = abs_lat, fill = Water, colour = Water)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
     scale_color_manual(values = water_colors) +
     scale_fill_manual(values = water_colors) +
@@ -949,15 +958,15 @@ subjectpie
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  Whist
+  Whistm
   # Create the combined plot with common legend
-  Scat3 <- ggarrange(Whist, Waterscat,
+  Scat3m <- ggarrange(Whistm, Waterscatm,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat3
+  Scat3m
   
   
-  meanscats<- ggarrange(Scat1, Scat2, Scat3,
+  meanscats<- ggarrange(Scat1m, Scat2m, Scat3m,
             common.legend = FALSE, legend = FALSE, align = "v",
             ncol = 1, nrow = 3, hjust = -0.5, vjust = 1)
  meanscats 
@@ -1002,7 +1011,7 @@ subjectpie
   
   # Major taxa
   
-  Majorscat <- ggplot(est.dataSD, aes(x = abs_lat, y = emmean, col = Taxa, fill = Taxa)) +
+  Majorscatsd <- ggplot(est.dataSD, aes(x = abs_lat, y = emmean, col = Taxa, fill = Taxa)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = data2, aes(x = abs_lat, y = Among_SD), size = 3, alpha = 0.6) +
     geom_line(data = est.dataSD, aes(group = Taxa), size = 2, linewidth = 2) +
@@ -1016,11 +1025,11 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  Majorscat
+  Majorscatsd
   
   # histogram plot
-  Majorden <- SD_data %>% ggplot(aes(x = abs_lat, fill = Taxa, colour = Taxa)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  Majordensd <- SD_data %>% ggplot(aes(x = abs_lat, fill = Taxa, colour = Taxa)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
     scale_color_manual(values = mtaxa_colors) +
     scale_fill_manual(values = mtaxa_colors) +
@@ -1028,12 +1037,12 @@ subjectpie
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  Majorden
+  Majordensd
   # Create the combined plot with common legend
-  Scat1 <- ggarrange(Majorden, Majorscat,
+  Scat1sd <- ggarrange(Majordensd, Majorscatsd,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat1
+  Scat1sd
   
   
   ## Predictions for "Reptiles"
@@ -1063,7 +1072,7 @@ subjectpie
   
   ## plot these predictions 
   
-  reptilescat <- ggplot(est.dataRSD, aes(x = abs_lat, y = emmean, col = Group2, fill = Group2)) +
+  reptilescatsd <- ggplot(est.dataRSD, aes(x = abs_lat, y = emmean, col = Group2, fill = Group2)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = SDrepdata, aes(x = abs_lat, y = Among_SD), size = 3, alpha = 0.6) +
     geom_line(data = est.dataRSD, aes(group = Group2), size = 2, linewidth = 2) +
@@ -1077,25 +1086,27 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  reptilescat
+  reptilescatsd
   
   # histogram plot
-  reptileh <- SDrepdata %>% ggplot(aes(x = abs_lat, fill = Group2, colour = Group2)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  reptilehsd <- SDrepdata %>% ggplot(aes(x = abs_lat, fill = Group2, colour = Group2)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
+    scale_x_continuous(limits = c(0, 63)) +
+    scale_y_continuous(limits = c(0, 10)) +
     scale_color_manual(values = reptile_colors) +
     scale_fill_manual(values = reptile_colors) +
     labs(x = NULL, y = "", fill = NULL, color = NULL) +
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  reptileh
+  reptilehsd
   
   # Create the combined plot with common legend
-  Scat2 <- ggarrange(reptileh, reptilescat,
+  Scat2sd <- ggarrange(reptilehsd, reptilescatsd,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat2
+  Scat2sd
   
   
   
@@ -1121,7 +1132,7 @@ subjectpie
   
   # Water/land scatterplot
   
-  Waterscat <- ggplot(est.dataWSD, aes(x = abs_lat, y = emmean, col = Water, fill = Water)) +
+  Waterscatsd <- ggplot(est.dataWSD, aes(x = abs_lat, y = emmean, col = Water, fill = Water)) +
     geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.2, col = NA) +
     geom_point(data = SD_data, aes(x = abs_lat, y = Among_SD), size = 3, alpha = 0.6) +
     geom_line(data = est.dataWSD, aes(group = Water), size = 2, linewidth = 2) +
@@ -1135,11 +1146,11 @@ subjectpie
       plot.margin = unit(c(0, 0, 0, 0), "lines"),
       axis.title.y = element_text(size = 10)
     )
-  Waterscat
+  Waterscatsd
   
   # histogram plot
-  Whist <- SD_data %>% ggplot(aes(x = abs_lat, fill = Water, colour = Water)) +
-    geom_histogram(alpha = 0.4, bw=1.5) +
+  Whistsd <- SD_data %>% ggplot(aes(x = abs_lat, fill = Water, colour = Water)) +
+    geom_histogram(alpha = 0.7, bw=1.5) +
     theme_bw() +
     scale_color_manual(values = water_colors) +
     scale_fill_manual(values = water_colors) +
@@ -1147,18 +1158,18 @@ subjectpie
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
     theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
     theme(plot.margin = unit(c(0, 0, -0.5, 0), "lines"))
-  Whist
+  Whistsd
   # Create the combined plot with common legend
-  Scat3 <- ggarrange(Whist, Waterscat,
+  Scat3sd <- ggarrange(Whist, Waterscat,
                      common.legend = TRUE, legend = FALSE, align = "v",
                      ncol = 1, nrow = 2, heights = c(2, 4), hjust = -0.5, vjust = 1)
-  Scat3
+  Scat3sd
   
   
-SDscats <- ggarrange(Scat1, Scat2, Scat3,
+SDscats <- ggarrange(Scat1sd, Scat2sd, Scat3sd,
             common.legend = FALSE, legend = FALSE, align = "v",
             ncol = 1, nrow = 3, hjust = -0.5, vjust = 1)
-  
+SDscats
   
   filen <- "naturalnestsMA/SDscats"
   
@@ -1167,72 +1178,3 @@ SDscats <- ggarrange(Scat1, Scat2, Scat3,
   
   
   
-### Not using any of the below at the moment ##
-###############################################
-  
-  ##Violin plots
-  data %>%
-    ggplot( aes(x=Mean, y=Major.group, fill=Major.group, colour=Major.group)) +
-    geom_violin(alpha= 0.8) +
-    coord_flip() +
-    labs(x="Mean temperature", y="", title="Mean temp grouped by major taxon") +
-    theme_bw() 
-  
-  ##Violin group by backbone
-  data %>%
-    ggplot( aes(x=Mean, y=Back, fill=Back, colour=Back)) +
-    geom_violin(alpha= 0.8) +
-    coord_flip() +
-    labs(x="Mean temperature", y="", title="Mean temp grouped by invert/vert") +
-    theme_bw() +
-    theme(legend.position = "none")
-  
-  ##Violin group by water/land
-  data %>%
-    ggplot( aes(x=Mean, y=Water, fill=Water, colour=Water)) +
-    geom_violin(alpha= 0.8) +
-    coord_flip() +
-    labs(x="Mean temperature", y="", title="Mean temp grouped by Water/Land") +
-    theme_bw() +
-    theme(legend.position = "none")
-  
-  ##Violin reptiles only
-  reptiles %>%
-    ggplot( aes(x=Mean, y=Group2, fill=Group2, colour=Group2)) +
-    geom_violin(alpha= 0.8) +
-    coord_flip() +
-    labs(x="Mean temperature", y="", title="Mean temp x Reptiles") +
-    theme_bw() +
-    theme(legend.position = "none")
-  
-  ##Violin inverts only
-  Invert %>%
-    ggplot( aes(x=Mean, y=Group3, fill=Group3, colour=Group3)) +
-    geom_violin(alpha= 0.8) +
-    coord_flip() +
-    labs(x="Mean temperature", y="", title="Mean temp x Invert") +
-    theme_bw() +
-    theme(legend.position = "none")
-  
-  
-  
-  
-##Lets try an alluvial plot
-
-library(ggalluvial)
-
-ggplot(as.data.frame(stream),
-       aes(y = Frequency, axis1 = Frequency, axis2 = Frequency1, axis3 = Frequency2)) +
-  geom_alluvium(aes(fill = Taxon), width = 1/12) +
-  geom_stratum(width = 1/12, fill = "black", color = "grey") +
-  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("Natural", "Phenotype"), expand = c(.05, .05)) +
-  scale_fill_brewer(type = "qual", palette = "Set1") +
-  ggtitle("example")
-
-##plot works but its not showing the data very well either. 
-
-
-
-
-
